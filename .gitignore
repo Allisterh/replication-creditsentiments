@@ -1,0 +1,15 @@
+# History files
+.Rhistory
+.Rapp.history
+
+.RData
+.RDataTmp.Ruserdata
+
+.Rproj.user
+
+# output data
+*.Rda
+*.pdf
+
+# system files
+*.DS_store
