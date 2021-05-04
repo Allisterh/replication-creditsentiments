@@ -31,5 +31,22 @@ dataset_full$BAAT10 <- dataset_full$BAA - dataset_full$GS10
 dataset_est   <- subset(dataset_full, sasdate <= end_sample & sasdate >= ymd(as.Date(begin_sample)) %m-% months(diff))
 dataset_train <- subset(dataset_full, sasdate <= end_sample)
 
+# NBER Recession dates
+nber_m <- read.csv("./data/USRECM.csv", stringsAsFactors = FALSE)
+nber_m$DATE <- as.Date(nber_m$DATE, format = "%Y-%m-%d")
+nber_m <- subset(nber_m, DATE >= "1959-01-01")
+nber_m <- nber_m[-722,]
+nber_mm <- subset(nber_m, DATE <= end_m)
+nber_mm <- subset(nber_mm, DATE >= begin_m)
+nber_mm$diff <- c(NA,diff(nber_mm$USREC))
+nber_mm <- nber_mm[-1,]
+nbermat <- matrix(NA, length(time), 4)
+colnames(nbermat) <- c("xstart","ystart","xend","yend")
+nbermat[,2] <- 0.001
+nbermat[,4] <- 0.999
+nbermat[which(nber_mm$diff==1),1]  <- which(nber_mm$diff==1)/length(time)
+nbermat[which(nber_mm$diff==1),3] <- (which(nber_mm$diff==-1)-1)/length(time)
+nbermat <- nbermat[-which(is.na(nbermat[,1])),]
+
 # delete unnecessary stuff
 rm(shadowrate)

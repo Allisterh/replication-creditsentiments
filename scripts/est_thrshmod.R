@@ -5,8 +5,8 @@
 ### 02/04/2021                              ###
 ###############################################
 
-Yraw1 <- as.matrix(dataset_est[,c("BAAT10","INDPRO","BUSLOANS","CPIAUCSL","FFRWXSR")])
-Qraw1 <- as.matrix(dataset_est[,c("FE.BAAT10.DE")])
+Yraw1 <- as.matrix(dataset_est[,vars])
+Qraw1 <- as.matrix(dataset_est[,proxyvar])
 Zraw1 <- as.matrix(dataset_est[,thrshvar])
 
 # transformations

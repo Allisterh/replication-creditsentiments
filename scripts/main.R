@@ -24,6 +24,12 @@ end_sample   <- as.Date("2014-12-01",format = "%Y-%m-%d")
 time_sample  <- seq.Date(begin_sample, end_sample, by = "1 month")
 Traw         <- length(time_sample)
 
+# variables in VAR
+vars     <- c("BAAT10","INDPRO","BUSLOANS","CPIAUCSL","FFRWXSR")
+proxyvar <- "FE.BAAT10.DE"
+thrshvar <- "BAAT10"
+M <- length(vars) # number of variables in the VAR
+
 # parameters
 theta <- 0.91 # diagnosticity parameter
 diff  <- 1    # difference parameter: 1 = month-on-month growth rate, 12 = year-on-year growth rate
@@ -31,7 +37,6 @@ plag  <- 13   # number of lags in the VAR
 thin  <- 1    # thinning factor
 nhor  <- 61   # impulse response horizon
 h     <- 2    # number of regimes
-thrshvar <- "BAAT10"
 
 # graphical settings
 varnames_plot <- c("Credit Sentiment", "Economic Activity", "Credit Volume", "Prices", "Interest Rate")
@@ -63,7 +68,10 @@ source("./scripts/est_thrshmod.R")
 
 # 5) Figures
 
-# Figure 1
+####################################
+## Figure 1                       ##
+####################################
+
 par(mfrow=c(1,1), mar=c(3,2,1,1))
 plot.ts(DE[,"BAAT10"], axes=FALSE,
         panel.first = rect(nbermat[,1], nbermat[,2], nbermat[,3], nbermat[,4], 
@@ -100,7 +108,10 @@ nbermat_zoom[which(nber_zoom_mm$diff==1),1] <- which(nber_zoom_mm$diff==1)/lengt
 nbermat_zoom[which(nber_zoom_mm$diff==1),3] <- (which(nber_zoom_mm$diff==-1)-1)/length(time_zoom)
 nbermat_zoom <- nbermat_zoom[-which(is.na(nbermat_zoom[,1])),,drop=F]
 
-# Figure 2a
+####################################
+## Figure 2a                      ##
+####################################
+
 par(mfrow=c(2,M), mar=c(2,2,1,1))
 for(mm in 1:M){
   plot.ts(irfvar_ext[4,mm,], col = "black", ylim = range(irfvar_ext[,mm,]),
@@ -120,7 +131,9 @@ for(mm in 1:M){
 }
 #dev.off()
 
-# Figure 2b
+####################################
+## Figure 2b                      ##
+####################################
 
 #par(mfrow=c(1,M), mar=c(2,2,1,1))
 for(mm in 1:M){
@@ -141,10 +154,18 @@ for(mm in 1:M){
 }
 dev.off()
 
-# Figure 3
+####################################
+## Figure 3                       ##
+####################################
 
-# Figure 4
+####################################
+## Figure 4                       ##
+####################################
 
-# Figure 5
+####################################
+## Figure 5                       ##
+####################################
 
-# Figure 6
+####################################
+## Figure 6                       ##
+####################################

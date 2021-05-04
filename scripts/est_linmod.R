@@ -5,8 +5,8 @@
 ### 02/04/2021                              ###
 ###############################################
 
-Yraw1 <- as.matrix(dataset_est[,c("BAAT10","INDPRO","BUSLOANS","CPIAUCSL","FFRWXSR")])
-Qraw1 <- as.matrix(dataset_est[,c("FE.BAAT10.DE"),drop=F])
+Yraw1 <- as.matrix(dataset_est[,vars])
+Qraw1 <- as.matrix(dataset_est[,proxyvar])
 
 # transformations
 #Yraw1[,"INDPRO"]   <- pct(Yraw1[,"INDPRO"],p=diff,f=12)
