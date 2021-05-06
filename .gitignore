@@ -4,6 +4,7 @@
 
 .RData
 .RDataTmp.Ruserdata
+.RDataTmp
 
 .Rproj.user
 

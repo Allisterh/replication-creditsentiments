@@ -7,19 +7,22 @@
 
 Yraw1 <- as.matrix(dataset_est[,vars])
 Qraw1 <- as.matrix(dataset_est[,proxyvar])
+M     <- ncol(Yraw1)
+
+# transformations
+for(mm in 1:M){
+  Yraw1[,mm] <- transx(Yraw1[,mm], tcode=tcode[mm], lag=diff)
+}
+Yraw1 <- Yraw1[-c(1:diff),]
+Qraw1 <- Qraw1[-c(1:diff),,drop=FALSE]
+Yraw1 <- apply(Yraw1, 2, scale)
+rownames(Yraw1)<-rownames(Qraw1)<-as.character(time_sample)
 
 # transformations
 #Yraw1[,"INDPRO"]   <- pct(Yraw1[,"INDPRO"],p=diff,f=12)
 #Yraw1[,"BUSLOANS"] <- pct(Yraw1[,"BUSLOANS"],p=diff,f=12)
 #Yraw1[,"CPIAUCSL"] <- pct(Yraw1[,"CPIAUCSL"],p=diff,f=12)
-Yraw1[-c(1:diff),"INDPRO"]   <- diff(log(Yraw1[,"INDPRO"]), lag=diff) * 100
-Yraw1[-c(1:diff),"BUSLOANS"] <- diff(log(Yraw1[,"BUSLOANS"]), lag=diff) * 100
-Yraw1[-c(1:diff),"CPIAUCSL"] <- diff(log(Yraw1[,"CPIAUCSL"]), lag=diff) * 100
-Yraw1[-c(1:diff),"FFRWXSR"]  <- diff(Yraw1[,"FFRWXSR"], lag=diff)
-Yraw1 <- Yraw1[-c(1:diff),]
-Qraw1 <- Qraw1[-c(1:diff),,drop=FALSE]
-#Yraw1 <- apply(Yraw1, 2, scale)
-rownames(Yraw1)<-rownames(Qraw1)<-as.character(time_sample)
+# Yraw1[-c(1:diff),"FFRWXSR"]  <- diff(Yraw1[,"FFRWXSR"], lag=diff)
 
 # original estimation
 # load("../02 data/US/DiagnosticExpectationsBAAT10_forecast.rda")
@@ -103,6 +106,6 @@ irfvar_ext  <- apply(irfvar_extInstr_store[,,"BAAT10",], c(2,3), quantile, c(.05
 irfvar_ext2 <- apply(irfvar_extInstr_store_old[,,"BAAT10",], c(2,3), quantile, c(.05,.10,.16,.50,.84,.90,.95), na.rm = TRUE)
 
 rm(Yraw1, Qraw1, fit.res, ihor, impact, impresp1, impresp2, impresp3, irep, irfvar_chol_store, irfvar_extInstr_store, 
-   irfvar_extInstr_store_old, M, Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
+   irfvar_extInstr_store_old, Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
    Sig12, Sig21, Sig22, SIGMA, temp, ZZp)
 

@@ -159,7 +159,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
   a_prior <- matrix(0, k, M) # state independent
   diag(a_prior) <- prmean
   # prior variance
-  A_prior <- array(10, c(k, M, h)) # state dependent
+  A_prior <- array(.1, c(k, M, h)) # state dependent
   
   # NG stuff
   lambda2_draw <- matrix(0.01, plag ,h, dimnames=list(paste0("lag.",seq(1,plag)),c("regime1","regime2")))
@@ -173,7 +173,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
   l_prior <- matrix(0,M,M) # state independent
   
   # prior variance
-  L_prior <- diag(M); diag(L_prior) <- 0; L_prior[lower.tri(L_prior)] <- 10
+  L_prior <- diag(M); diag(L_prior) <- 0; L_prior[lower.tri(L_prior)] <- .1
   L_prior <- array(L_prior, c(M, M, h)) # state dependent
   
   # NG
@@ -235,7 +235,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
   lambda2_store <- array(NA_real_, c(thindraws, plag+1, h))
   tau_store     <- array(NA_real_, c(thindraws, plag+1, h))
   # Threshold
-  Smat_store    <- array(NA_real_, c(thindraws, bigT, h))
+  S_store    <- array(NA_real_, c(thindraws, bigT, 1))
   gamma_store   <- array(NA_real_, c(thindraws, 1))
   d_store       <- array(NA_real_, c(thindraws, 1))
   for(irep in 1:ntot) {
@@ -459,7 +459,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
       lambda2_store[count,,] <- lambda2_draw
       tau_store[count,,]     <- tau_draw
       # thresh stuff
-      Smat_store[count,,] <- Smat_draw
+      S_store[count,,] <- S_draw
       gamma_store[count,] <- gamma_draw
       d_store[count,] <- d_draw
     }
@@ -487,7 +487,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
   Lprior_store <- Lprior_store[trim_eigen,,,]
   lambda2_store <- lambda2_store[trim_eigen,,]
   tau_store <- tau_store[trim_eigen,,]
-  Smat_store <- Smat_store[trim_eigen,,]
+  S_store <- S_store[trim_eigen,,]
   gamma_store <- gamma_store[trim_eigen,]
   d_store <- d_store[trim_eigen,]
   
@@ -496,7 +496,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
   # define output
   out <- list(store=list(A_store=A_store,L_store=L_store,res_store=res_store,Sv_store=Sv_store,pars_store=pars_store,
                          Aprior_store=Aprior_store,Lprior_store=Lprior_store,lambda2_store=lambda2_store,tau_store=tau_store,
-                         gamma_store=gamma_store,d_store=d_store,Diags_store=Diags_store,Smat_store=Smat_store),
+                         gamma_store=gamma_store,d_store=d_store,Diags_store=Diags_store,S_store=S_store),
               args=args)
   return(out)
 }
@@ -932,5 +932,56 @@ pct <- function(x,p,f) {log(x/dplyr::lag(x,n=p))*100*f}
   namedlist = lapply(namedlist,function(x) if (any(x=="list(NULL)blabla")) NULL else x)
   lapply(namedlist, function(l) if(any(l=="list(NULL)blabla")){NULL}else{l})
   return(namedlist)
+}
+
+#-------------------------------------------------------------------------------------------------------
+
+transx <- function(x,tcode,lag){
+  if(!is.matrix(x)) x<-as.matrix(x)
+  # transform x series
+  # -- tcodes:
+  #       1 Level
+  #       2 First Difference
+  #       3 Second Difference
+  #       4 Log-Level
+  #       5 Log-First-Difference
+  #       6 Log-Second-Difference
+  #       7 Detrend Log Using 1-sided HP detrending for Monthly data
+  #       8 Detrend Log Using 1-sided HP detrending for Quarterly data
+  #       9 (1-L)/(1-L^12)
+  #
+  #       Translated from the Gauss procs of Stock&Watson(2005),'Implications of
+  #       dynamic factor models for VAR analysis'
+  #       Dimitris Korobilis, June 2007
+  #       
+  #       Translated from Matlab Code by Dimitris Korobilis to R
+  #       Maximilian Böck, November 2019
+  
+  small   = 1e-06
+  relvarm = .00000075
+  relvarq = .000625
+  
+  n <- nrow(x)
+  y <- matrix(NA,n,1)
+  
+  if(tcode==1){
+    y<-x
+  }else if(tcode==2){
+    y[(lag+1):n,] <- x[(lag+1):n,] - x[1:(n-lag),]
+  }else if(tcode==3){
+    y[(lag*2+1):n,] <- x[(lag*2+1):n,] - 2*x[(lag+1):(n-lag),] + x[1:(n-lag*2),]
+  }else if(tcode==4||tcode==5||tcode==6||tcode==7||tcode==8||tcode==9){
+    if(min(x) < small){
+      y[1:n,]<-NA
+    }else{
+      if(tcode==4) y[1:n,] <- log(x)
+      if(tcode==5) y[(lag+1):n,] <- log(x)[(lag+1):n,]-log(x)[1:(n-lag),]
+      if(tcode==6) y[(2*lag+1):n,] <- diff(log(x), differences=2)
+      if(tcode==7) y[1:n,] <- detrend(log(x),relvarm)[["xc"]]
+      if(tcode==8) y[1:n,] <- detrend(log(x),relvarq)[["xc"]]
+      if(tcode==9) y[14:n,] <- log(x)[14:n,]-log(x)[13:(n-1),]-log(x)[2:(n-12)]+log(x)[1:(n-13),]
+    }
+  }
+  return(y)
 }
 
