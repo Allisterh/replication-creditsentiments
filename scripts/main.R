@@ -31,6 +31,7 @@ proxyvar <- "FE.BAAT10.DE"
 proxyrob <- c("FE.BAAT10.DE","FE.BAAT10.RE","FE.BAAT10.ADA","FE.BAAT10.WTR","FE.BAAT10.STR","FE.BAAT10.LAA")
 thrshvar <- "BAAT10"
 M <- length(vars) # number of variables in the VAR
+r <- length(proxyrob)
 
 # parameters
 theta <- 0.91 # diagnosticity parameter
@@ -48,33 +49,42 @@ height <- 1800
 # 2) Build Dataset
 source("./scripts/data_prep.R")
 
-# 2) Forecasting Credit Spreads
-if(file.exists(paste0("./forecasting_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
-  load(paste0("./forecasting_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+# 3) Forecasting Credit Spreads
+if(file.exists(paste0("./saves/forecasting_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
+  load(paste0("./saves/forecasting_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 }else{
   source("./scripts/forecasting.R")
-  save(dataset_est, coef, forecasts, file=paste0("./forecasting_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+  save(dataset_est, coef, forecasts, file=paste0("./saves/forecasting_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 }
 
-# 3) Estimate Linear Model
-if(file.exists(paste0("./est_linmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
-  load(paste0("./est_linmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+# 4) Estimate Linear Model
+if(file.exists(paste0("./saves/est_linmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
+  load(paste0("./saves/est_linmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 }else{
   source("./scripts/est_linmod.R")
   save(run_var, irfvar_chol, irfvar_ext, irfvar_ext2, 
-       file=paste0("./est_linmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+       file=paste0("./saves/est_linmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 }
 
-# 4) Estimate Threshold Model
-if(file.exists(paste0("./est_thrshmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
-  load(paste0("./est_thrshmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+# 5) Estimate Threshold Model
+if(file.exists(paste0("./saves/est_thrshmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
+  load(paste0("./saves/est_thrshmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 }else{
   source("./scripts/est_thrshmod.R")
-  save(run_tvar, irftvar_chol, irftvar_ext, irftvar_ext2,
-       file=paste0("./est_thrshmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+  save(run_tvar, irftvar_chol, irftvar_ext, irftvar_ext2, irftvar_robust,
+       file=paste0("./saves/est_thrshmod_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 }
 
-# 5) Figures
+# 6) Robustness: Ordering in the VAR / TVAR
+if(file.exists(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
+  load(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+}else{
+  source("./scripts/rob_ordering.R")
+  save(run_tvar, irftvar_chol, irftvar_ext, irftvar_ext2, irftvar_robust,
+       file=paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+}
+
+# 6) Figures
 
 ####################################
 ## Figure 1                       ##
@@ -246,22 +256,17 @@ dev.off()
 
 png("./figure6.png", type = "cairo", width = width, height = height, res = 300)
 par(mfrow=c(r-1,M-1), mar=c(2,2,1,1))
-min   <- c(0,-1.00,-0.50,-1.00,-1.5)
-max   <- c(0,+1.00,+0.75,+0.50,+1.5)
-by_x  <- c(0,+0.50,+0.25,+0.25,+0.5)
-max_y <- c(0,400,500,500,500)
-vars  <- c("Economic Activity", "Credit Volume", "Prices", "Interest Rates")
 heur  <- c("RE","ADA", "WTR", "STR", "LAA")
 for(rr in 2:r){
   for(mm in 2:M){
+    temp1 <- hist(irftvar_robust[,mm,1,rr], plot=FALSE)
+    temp2 <- hist(irftvar_robust[,mm,1,1], plot=FALSE)
     if(mm==2) par(mar=c(2,4,2,1)) else par(mar=c(2,2,1,1))
-    hist(irftvar_robust[,mm,1,rr], xaxt="n", yaxt="n", xlab = "", ylab = "", main = "",
-         col=rgb(0.8,0.8,0.8,0.5), xlim = c(min[mm],max[mm]) , ylim = c(0, max_y[mm]))
-    if(rr==2) title(main = vars[mm-1])
-    hist(irftvar_robust[,mm,1,1],col=rgb(0.05,0.05,0.05,0.5),add=T)
+    hist(irftvar_robust[,mm,1,rr], xlab = "", ylab = "", main = "", freq=FALSE, breaks=20,
+         col=rgb(0.8,0.8,0.8,0.5), xlim=range(temp1$breaks,temp2$breaks), ylim=range(temp1$density,temp2$density))
+    if(rr==2) title(main = varnames_plot[mm-1])
+    hist(irftvar_robust[,mm,1,1],col=rgb(0.05,0.05,0.05,0.5),add=T,freq=FALSE,breaks=20)
     abline(v=0, col="red", lty=2,lwd=2)
-    axis(1, at=seq(min[mm],max[mm],by=by_x[mm]))
-    axis(2)
     if(mm==2) mtext(heur[rr-1], side=2, padj=-2.2)
   }
 }
@@ -271,22 +276,17 @@ dev.off()
 
 png("./figure6_regime2.png", type = "cairo", width = width, height = height, res = 300)
 par(mfrow=c(r-1,M-1), mar=c(2,2,1,1))
-min   <- c(0,-1.00,-0.50,-1.00,-1.5)
-max   <- c(0,+1.00,+0.75,+0.50,+1.5)
-by_x  <- c(0,+0.50,+0.25,+0.25,+0.5)
-max_y <- c(0,400,500,500,500)
-vars  <- c("Economic Activity", "Credit Volume", "Prices", "Interest Rates")
 heur  <- c("RE","ADA", "WTR", "STR", "LAA")
 for(rr in 2:r){
   for(mm in 2:M){
+    temp1 <- hist(irftvar_robust[,mm,2,rr], plot=FALSE)
+    temp2 <- hist(irftvar_robust[,mm,2,1], plot=FALSE)
     if(mm==2) par(mar=c(2,4,2,1)) else par(mar=c(2,2,1,1))
-    hist(irftvar_robust[,mm,2,rr], xaxt="n", yaxt="n", xlab = "", ylab = "", main = "",
-         col=rgb(0.8,0.8,0.8,0.5), xlim = c(min[mm],max[mm]) , ylim = c(0, max_y[mm]))
-    if(rr==2) title(main = vars[mm-1])
-    hist(irftvar_robust[,mm,2,1],col=rgb(0.05,0.05,0.05,0.5),add=T)
+    hist(irftvar_robust[,mm,2,rr], xlab = "", ylab = "", main = "", freq=FALSE, breaks=20,
+         col=rgb(0.8,0.8,0.8,0.5), xlim=range(temp1$breaks,temp2$breaks), ylim=range(temp1$density,temp2$density))
+    if(rr==2) title(main = varnames_plot[mm-1])
+    hist(irftvar_robust[,mm,2,1], col=rgb(0.05,0.05,0.05,0.5), add=T, freq=FALSE, breaks=20)
     abline(v=0, col="red", lty=2,lwd=2)
-    axis(1, at=seq(min[mm],max[mm],by=by_x[mm]))
-    axis(2)
     if(mm==2) mtext(heur[rr-1], side=2, padj=-2.2)
   }
 }

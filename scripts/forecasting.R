@@ -2,7 +2,7 @@
 ### Forecast Heuristics                     ###
 ### The Impact of Credit Market Sentiments  ###
 ### Maximilian Boeck                        ###
-### 01/04/2021                              ###
+### 01/05/2021                              ###
 ###############################################
 
 # define start / end of training sample

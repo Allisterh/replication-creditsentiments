@@ -2,7 +2,7 @@
 ### Linear Model                            ###
 ### The Impact of Credit Market Sentiments  ###
 ### Maximilian Boeck                        ###
-### 02/04/2021                              ###
+### 02/05/2021                              ###
 ###############################################
 
 Yraw1 <- as.matrix(dataset_est[,vars])

@@ -2,7 +2,7 @@
 ### Threshold Model                         ###
 ### The Impact of Credit Market Sentiments  ###
 ### Maximilian Boeck                        ###
-### 02/04/2021                              ###
+### 02/05/2021                              ###
 ###############################################
 
 Yraw1 <- as.matrix(dataset_est[,vars])
@@ -35,14 +35,14 @@ rownames(Yraw1)<-rownames(Qraw1)<-as.character(time_sample)
 run_tvar <- btvar(Yraw = Yraw1, plag = plag, d.min = 1, d.max = 4, Zraw = Zraw1, nsave = draws, nburn = burnin, thin = thin, 
                   cons = TRUE, trend = FALSE, sv = FALSE, eigen = TRUE)
 
-round(apply(run_tvar$store$A_store,c(2,3,4),median),4)
-round(apply(run_tvar$store$L_store,c(2,3,4),median),4)
-round(apply(run_tvar$store$Aprior_store,c(2,3,4),median),4)
-round(apply(run_tvar$store$Lprior_store,c(2,3,4),median),4)
-round(median(run_tvar$store$gamma_store),4)
-summary(run_tvar$store$d_store)
-round(apply(run_tvar$store$Diags_store,c(2,3),median),4)
-round(apply(run_tvar$store$Sv_store,c(2,3),median),4)
+# round(apply(run_tvar$store$A_store,c(2,3,4),median),4)
+# round(apply(run_tvar$store$L_store,c(2,3,4),median),4)
+# round(apply(run_tvar$store$Aprior_store,c(2,3,4),median),4)
+# round(apply(run_tvar$store$Lprior_store,c(2,3,4),median),4)
+# round(median(run_tvar$store$gamma_store),4)
+# summary(run_tvar$store$d_store)
+# round(apply(run_tvar$store$Diags_store,c(2,3),median),4)
+# round(apply(run_tvar$store$Sv_store,c(2,3),median),4)
 
 #------ Identification
 thindraws <- run_tvar$args$thindraws
@@ -124,7 +124,6 @@ irftvar_ext2 <- apply(irftvar_ext_store_old[,,"BAAT10",,], c(2,3,4), quantile, c
 
 # robustness stuff
 
-r <- length(proxyrob)
 irftvar_robust <- array(NA_real_, c(thindraws, M, h, r))
 
 Qrawl <- as.matrix(dataset_est[,proxyrob])
@@ -163,4 +162,4 @@ for(irep in 1:thindraws){
 
 rm(Yraw1, Qraw1, Qrawl, fit.res, ihor, impact, impresp1, impresp2, impresp3, irep, irftvar_chol_store, irftvar_ext_store, 
    irftvar_ext_store_old, Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
-   Sig12, Sig21, Sig22, SIGMA, temp, ZZp)
+   Sig12, Sig21, Sig22, SIGMA, temp, ZZp, rr, mm, hh)
