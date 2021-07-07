@@ -22,10 +22,13 @@ rownames(Yraw1)<-as.character(time_sample)
 orderings <- gtools::permutations(n = 5, r = M, v = 1:M)
 
 for(oo in 1:nrow(orderings)){
+#for(oo in nrow(orderings):1){
   if(file.exists(paste0("./saves/modorder=",oo,"_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
     cat(paste0("Round: ", oo,".\n"))
     next
   }
+  
+  set.seed(571)
   
   order <- orderings[oo,]
   

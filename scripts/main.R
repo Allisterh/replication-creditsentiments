@@ -15,8 +15,8 @@ setwd("/users/mboeck/Dropbox/Endogenous Credit Cycles/Credit Sentiments/replicat
 source("./scripts/aux.R")
 
 # draws and burn-in's used for all involved samplers
-draws  = 2000
-burnin = 2000
+draws  = 2000 #10000
+burnin = 2000 #15000
 
 # define sample
 begin_sample <- as.Date("1968-01-01",format = "%Y-%m-%d")
@@ -76,13 +76,13 @@ if(file.exists(paste0("./saves/est_thrshmod_diff=",diff,"_plag=",plag,"_draws=",
 }
 
 # 6) Robustness: Ordering in the VAR / TVAR
-if(file.exists(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
-  load(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
-}else{
-  source("./scripts/rob_ordering.R")
-  save(run_tvar, irftvar_chol, irftvar_ext, irftvar_ext2, irftvar_robust,
-       file=paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
-}
+# if(file.exists(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
+#   load(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+# }else{
+#   source("./scripts/rob_ordering.R")
+#   save(run_tvar, irftvar_chol, irftvar_ext, irftvar_ext2, irftvar_robust,
+#        file=paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+# }
 
 # 6) Figures
 
@@ -92,7 +92,8 @@ if(file.exists(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",
 
 png("./figure1.png", type = "cairo", width = width, height = 2000, res = 300)
 par(fig = c(0,1,0,1), mfrow=c(1,1), mar=c(3,2,1,1))
-plot.ts(dataset_est$BAAT10, xaxt="n", yaxt="n",
+baat10_plot = dataset_est$BAAT10[(diff+1):nrow(dataset_est)]
+plot.ts(baat10_plot, xaxt="n", yaxt="n",
         panel.first = rect(nbermat_common[,1], nbermat_common[,2], nbermat_common[,3], nbermat_common[,4], col='grey80', border=NA), 
         xlab = "", ylab = "",lwd=3, ylim = c(1,8))
 lines(forecasts[,"DE"],col="grey30",lty=2,lwd=2)
@@ -103,7 +104,7 @@ axis(2, lwd = 2, cex = 1.5)
 axis(1, at  = seq(1,Traw,by=20), 
      labels = format(time_sample[seq(1,Traw,by=20)],"%Y"), lwd = 2, cex = 1.5)
 par(fig = c(0.24,0.78, 0.45, 0.99), new = T) 
-plot.ts(dataset_est$BAAT10[time_sample%in%time_zoom], axes=FALSE,
+plot.ts(baat10_plot[time_sample%in%time_zoom], axes=FALSE,
         panel.first = rect(nbermat_zoom[,1], nbermat_zoom[,2], nbermat_zoom[,3],
                            nbermat_zoom[,4], col='grey80', border=NA), 
         xlab = "", ylab = "",lwd=3,ylim=c(1.4,4.2),
@@ -119,7 +120,7 @@ dev.off()
 ## Figure 2                       ##
 ####################################
 
-png("./figure2a.png", type = "cairo", width = width, height = height, res = 300)
+png("./figure2a.png", type = "cairo", width = width, height = height/2, res = 300)
 par(mfrow=c(1,M), mar=c(2,2,1,1))
 for(mm in 1:M){
   plot.ts(irfvar_ext[4,mm,], col = "black", ylim = range(irfvar_ext[,mm,]),
@@ -139,7 +140,7 @@ for(mm in 1:M){
 }
 dev.off()
 
-png("./figure2b.png", type = "cairo", width = width, height = height, res = 300)
+png("./figure2b.png", type = "cairo", width = width, height = height/2, res = 300)
 par(mfrow=c(1,M), mar=c(2,2,1,1))
 for(mm in 1:M){
   plot.ts(irfvar_chol[4,mm,], col = "black", ylim = range(irfvar_chol[,mm,]),
@@ -268,6 +269,7 @@ for(rr in 2:r){
     hist(irftvar_robust[,mm,1,1],col=rgb(0.05,0.05,0.05,0.5),add=T,freq=FALSE,breaks=20)
     abline(v=0, col="red", lty=2,lwd=2)
     if(mm==2) mtext(heur[rr-1], side=2, padj=-2.2)
+    box()
   }
 }
 dev.off()
@@ -288,6 +290,7 @@ for(rr in 2:r){
     hist(irftvar_robust[,mm,2,1], col=rgb(0.05,0.05,0.05,0.5), add=T, freq=FALSE, breaks=20)
     abline(v=0, col="red", lty=2,lwd=2)
     if(mm==2) mtext(heur[rr-1], side=2, padj=-2.2)
+    box()
   }
 }
 dev.off()

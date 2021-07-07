@@ -67,6 +67,8 @@ ar_svf <- function(Yraw, p=1, nburn=500, nsave=500) {
               sv=sv))
 }
 
+#-----------------------------------------------------------------------------------------------
+
 btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1,
                   cons=FALSE, trend=FALSE, sv=FALSE, eigen=TRUE) {
   args <- .construct.arglist(btvar)
@@ -143,11 +145,12 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
   #---------------------------------------------------------------------------------------------------------
   # Initial Values
   #---------------------------------------------------------------------------------------------------------
-  A_draw <- A_OLS
-  SIGMA  <- array(SIGMA_OLS, c(M,M,h))
-  Em     <- Em_str <- E_OLS
-  L_draw <- array(0, c(M, M, h))
+  A_draw  <- A_OLS
+  SIGMA   <- array(SIGMA_OLS, c(M,M,h))
+  Em_draw <- Em_str <- E_OLS
+  L_draw  <- L_drawinv <- array(0, c(M, M, h))
   for(hh in 1:h) L_draw[,,hh] <- diag(M)
+  for(hh in 1:h) L_drawinv[,,hh] <- solve(L_draw[,,hh])
   gamma_draw <- thrsh_mean
   S_draw <- S_mean
   #---------------------------------------------------------------------------------------------------------
@@ -246,39 +249,81 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
       Y.s      <- Y[sl.state,,drop=FALSE]
       X.s      <- X[sl.state,,drop=FALSE]
       Sv.s     <- Sv_draw[sl.state,,drop=F]
-      
-      for (mm in 1:M){
-        if (mm==1){
-          Y.i <- Y.s[,mm]*exp(-0.5*Sv.s[,mm])
-          X.i <- X.s*exp(-0.5*Sv.s[,mm])
+      A.s      <- A_draw[,,hh]
+      L.s      <- L_draw[,,hh]
+      L.s.inv  <- L_drawinv[,,hh]
+      # Step 1: Sample coefficients - carrier/clark/marcellino 2019 JoE 
+      # for (mm in 1:M){
+      #   if (mm==1){
+      #     Y.i <- Y.s[,mm]*exp(-0.5*Sv.s[,mm])
+      #     X.i <- X.s*exp(-0.5*Sv.s[,mm])
+      #     
+      #     V_post <- try(chol2inv(chol(crossprod(X.i)+diag(1/A_prior[,mm,hh]))),silent=TRUE)
+      #     if (is(V_post,"try-error")) V_post <- MASS::ginv(crossprod(X.i)+diag(1/A_prior[,mm,hh]))
+      #     A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/A_prior[,mm,hh])%*%a_prior[,mm])
+      #     
+      #     A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
+      #     if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
+      #     A_draw[,mm,hh] <- A.draw.i
+      #     Em[sl.state,mm] <- Em_str[sl.state,mm] <- Y.s[,mm] - X.s%*%A.draw.i
+      #   }else{
+      #     Y.i <- Y.s[,mm]*exp(-0.5*Sv.s[,mm])
+      #     X.i <- cbind(X.s,Em[sl.state,1:(mm-1)])*exp(-0.5*Sv.s[,mm])
+      #     
+      #     V_post <- try(chol2inv(chol((crossprod(X.i)+diag(1/c(A_prior[,mm,hh],L_prior[mm,1:(mm-1),hh]))))),silent=TRUE)
+      #     if (is(V_post,"try-error")) V_post <- MASS::ginv((crossprod(X.i)+diag(1/c(A_prior[,mm,hh],L_prior[mm,1:(mm-1),hh]))))
+      #     A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/c(A_prior[,mm,hh],L_prior[mm,1:(mm-1),hh]))%*%c(a_prior[,mm],l_prior[mm,1:(mm-1)]))
+      #     
+      #     A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
+      #     if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
+      #     
+      #     A_draw[,mm,hh] <- A.draw.i[1:ncol(X)]
+      #     Em[sl.state,mm] <- Y.s[,mm] - X.s%*%A.draw.i[1:ncol(X)]
+      #     Em_str[sl.state,mm] <- Y.s[,mm] - X.s%*%A.draw.i[1:ncol(X)] - Em[sl.state,1:(mm-1),drop=FALSE]%*%A.draw.i[(ncol(X)+1):ncol(X.i),drop=FALSE]
+      #     L_draw[mm,1:(mm-1),hh] <- A.draw.i[(ncol(X)+1):ncol(X.i)]
+      #   }
+      # }
+      #----------------------------------------------------------------------------
+      # Chan, Carriero, Clark and Marcellino 2021 Corrigendum to Carriero/Clark/Marcellino 2019 JoE
+      # Step 1a: Sample coefficients of A matrix
+      for(mm in 1:M){
+        A0_draw = A.s
+        A0_draw[,mm] <- 0
+        
+        ztilde <- as.vector((Y.s - X.s%*%A0_draw)%*%t(L.s.inv[mm:M,,drop=FALSE])) * exp(-0.5*as.vector(Sv.s[,mm:M,drop=FALSE]))
+        xtilde <- (L.s.inv[mm:M,mm,drop=FALSE] %x% X.s) * exp(-0.5*as.vector(Sv.s[,mm:M,drop=FALSE]))
+        
+        V_post <- try(chol2inv(chol(crossprod(xtilde)+diag(1/A_prior[,mm,hh]))),silent=TRUE)
+        if(is(V_post,"try-error")) V_post <- solve(crossprod(xtilde)+diag(1/A_prior[,mm,hh]))
+        if(is(V_post,"try-error")) V_post <- ginv(crossprod(xtilde)+diag(1/A_prior[,mm,hh]))
+        A_post <- V_post%*%(crossprod(xtilde,ztilde)+diag(1/A_prior[,mm,hh])%*%a_prior[,mm])
+        
+        A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X)),silent=TRUE)
+        if(is(A.draw.i,"try-error")) A.draw.i <- mvrnorm(1,A_post,V_post)
+        A_draw[,mm,hh] <- A.draw.i
+        Em_draw[sl.state,mm] <- Y.s[,mm]-X.s%*%A.draw.i
+      }
+      # Step 1b: Sample coefficients in L matrix
+      if(M > 1){
+        for(mm in 2:M){
+          eps.m <- Em_draw[sl.state,mm]*exp(-0.5*Sv.s[,mm,drop=TRUE])
+          eps.x <- Em_draw[sl.state,1:(mm-1),drop=FALSE]*exp(-0.5*Sv.s[,mm,drop=TRUE])
           
-          V_post <- try(chol2inv(chol(crossprod(X.i)+diag(1/A_prior[,mm,hh]))),silent=TRUE)
-          if (is(V_post,"try-error")) V_post <- MASS::ginv(crossprod(X.i)+diag(1/A_prior[,mm,hh]))
-          A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/A_prior[,mm,hh])%*%a_prior[,mm])
+          L_post <- try(chol2inv(chol(crossprod(eps.x)+diag(1/L_prior[mm,1:(mm-1),hh],mm-1,mm-1))),silent=TRUE)
+          if(is(L_post,"try-error")) L_post <- solve(crossprod(eps.x)+diag(1/L_prior[mm,1:(mm-1),hh],mm-1,mm-1))
+          if(is(L_post,"try-error")) L_post <- ginv(crossprod(eps.x)+diag(1/L_prior[mm,1:(mm-1),hh],mm-1,mm-1))
+          l_post <- L_post%*%(crossprod(eps.x,eps.m)+diag(1/L_prior[mm,1:(mm-1),hh],mm-1,mm-1)%*%l_prior[mm,1:(mm-1)])
           
-          A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
-          if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
-          A_draw[,mm,hh] <- A.draw.i
-          Em[sl.state,mm] <- Em_str[sl.state,mm] <- Y.s[,mm] - X.s%*%A.draw.i
-        }else{
-          Y.i <- Y.s[,mm]*exp(-0.5*Sv.s[,mm])
-          X.i <- cbind(X.s,Em[sl.state,1:(mm-1)])*exp(-0.5*Sv.s[,mm])
-          
-          V_post <- try(chol2inv(chol((crossprod(X.i)+diag(1/c(A_prior[,mm,hh],L_prior[mm,1:(mm-1),hh]))))),silent=TRUE)
-          if (is(V_post,"try-error")) V_post <- MASS::ginv((crossprod(X.i)+diag(1/c(A_prior[,mm,hh],L_prior[mm,1:(mm-1),hh]))))
-          A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/c(A_prior[,mm,hh],L_prior[mm,1:(mm-1),hh]))%*%c(a_prior[,mm],l_prior[mm,1:(mm-1)]))
-          
-          A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
-          if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
-          
-          A_draw[,mm,hh] <- A.draw.i[1:ncol(X)]
-          Em[sl.state,mm] <- Y.s[,mm] - X.s%*%A.draw.i[1:ncol(X)]
-          Em_str[sl.state,mm] <- Y.s[,mm] - X.s%*%A.draw.i[1:ncol(X)] - Em[sl.state,1:(mm-1),drop=FALSE]%*%A.draw.i[(ncol(X)+1):ncol(X.i),drop=FALSE]
-          L_draw[mm,1:(mm-1),hh] <- A.draw.i[(ncol(X)+1):ncol(X.i)]
+          L.draw.i <- try(l_post+t(chol(L_post))%*%rnorm(length(1:(mm-1))),silent=TRUE)
+          if(is(L.draw.i,"try-error")) L.draw.i <- mvrnorm(1,l_post,L_post)
+          L_draw[mm,1:(mm-1),hh] <- L.draw.i
         }
       }
-      rownames(A_draw) <- colnames(X)
+      # Step 1c: Compute Em_str
+      L_drawinv[,,hh] = solve(L_draw[,,hh])
+      Em_str[sl.state,] = Y.s%*%t(L_drawinv[,,hh]) - X.s%*%A_draw[,,hh]%*%t(L_drawinv[,,hh])
     }
+    rownames(A_draw) <- colnames(X)
     #----------------------------------------------------------------------------------------
     # Step 2: Normal-Gamma prior 
     for(hh in 1:h){
@@ -293,7 +338,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
           temp <- do_rgig1(lambda = tau_draw["cov",hh] - 0.5, 
                            chi = (L_draw[mm,ii,hh] - l_prior[mm,ii])^2, 
                            psi = tau_draw["cov",hh]*lambda2_draw["cov",hh])
-        L_prior[mm,ii,hh] <- ifelse(temp<1e-8,1e-8,temp)
+        L_prior[mm,ii,hh] = ifelse(temp<1e-8,1e-8,ifelse(temp>1e+8,1e+8,temp))
         }
       }
       if(sample_tau){
@@ -333,7 +378,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
           temp <- do_rgig1(lambda = tau_draw[pp,hh] - 0.5,
                            chi = (A.lag[jj,ii] - a.prior[jj,ii])^2,
                            psi = tau_draw[pp,hh]*prod(lambda2_draw[1:pp,hh]))
-          A.prior[jj,ii] <- ifelse(temp<1e-8,1e-8,temp)
+          A.prior[jj,ii] = ifelse(temp<1e-8,1e-8,ifelse(temp>1e+8,1e+8,temp))
           }
         }
         A_prior[slct.i,,hh] <- A.prior
@@ -378,8 +423,8 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
       }
       # compute SIGMA
       for(hh in 1:H) {
-        SIGMA[,,hh] <- H_draw[,,hh] %*%
-          diag(exp(Sv_draw[bigT,])) %*% t(H_draw[,,hh])
+        SIGMA[,,hh] <- L_draw[,,hh] %*%
+          diag(exp(Sv_draw[bigT,])) %*% t(L_draw[,,hh])
       }
     } else {
       for(hh in 1:h){
@@ -445,7 +490,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
       count <- count+1
       A_store[count,,,] <- A_draw
       L_store[count,,,] <- L_draw
-      res_store[count,,] <- Em
+      res_store[count,,] <- Em_draw
       # variances
       if(sv){
         Sv_store[count,,] <- Sv_draw
@@ -501,7 +546,7 @@ btvar <- function(Yraw, plag, d.min, d.max, Zraw, nsave=5000, nburn=5000, thin=1
   return(out)
 }
 
-#---------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=FALSE, sv=TRUE, eigen=TRUE){
   args <- .construct.arglist(bvar)
@@ -568,10 +613,11 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
   #---------------------------------------------------------------------------------------------------------
   # Initial Values
   #---------------------------------------------------------------------------------------------------------
-  A_draw <- A_OLS
-  SIGMA  <- array(SIGMA_OLS, c(M,M,bigT))
-  Em     <- Em_str <- E_OLS
-  L_draw <- diag(M)
+  A_draw  <- A_OLS
+  SIGMA   <- array(SIGMA_OLS, c(M,M,bigT))
+  Em_draw <- Em_str <- E_OLS
+  L_draw  <- diag(M)
+  L_drawinv <- solve(L_draw)
   #---------------------------------------------------------------------------------------------------------
   # PRIORS
   #---------------------------------------------------------------------------------------------------------
@@ -643,38 +689,78 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
   tau_store     <- array(NA_real_, c(thindraws, plag+1, 1))
   for(irep in 1:ntot) {
     #----------------------------------------------------------------------------
-    # Step 1: Sample coefficients
-    for (mm in 1:M){
-      if (mm==1){
-        Y.i <- Y[,mm]*exp(-0.5*Sv_draw[,mm])
-        X.i <- X*exp(-0.5*Sv_draw[,mm])
-        
-        V_post <- try(chol2inv(chol(crossprod(X.i)+diag(1/A_prior[,mm]))),silent=TRUE)
-        if (is(V_post,"try-error")) V_post <- MASS::ginv(crossprod(X.i)+diag(1/A_prior[,mm]))
-        A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/A_prior[,mm])%*%a_prior[,mm])
-        
-        A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
-        if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
-        A_draw[,mm] <- A.draw.i
-        Em[,mm] <-  Em_str[,mm] <- Y[,mm]-X%*%A.draw.i
-      }else{
-        Y.i <- Y[,mm]*exp(-0.5*Sv_draw[,mm])
-        X.i <- cbind(X,Em[,1:(mm-1)])*exp(-0.5*Sv_draw[,mm])
-        
-        V_post <- try(chol2inv(chol((crossprod(X.i)+diag(1/c(A_prior[,mm],L_prior[mm,1:(mm-1)]))))),silent=TRUE)
-        if (is(V_post,"try-error")) V_post <- MASS::ginv((crossprod(X.i)+diag(1/c(A_prior[,mm],L_prior[mm,1:(mm-1)]))))
-        A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/c(A_prior[,mm],L_prior[mm,1:(mm-1)]))%*%c(a_prior[,mm],l_prior[mm,1:(mm-1)]))
-        
-        A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
-        if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
-        
-        A_draw[,mm] <- A.draw.i[1:ncol(X)]
-        Em[,mm] <- Y[,mm]-X%*%A.draw.i[1:ncol(X)]
-        Em_str[,mm] <- Y[,mm]-X%*%A.draw.i[1:ncol(X)]-Em[,1:(mm-1),drop=FALSE]%*%A.draw.i[(ncol(X)+1):ncol(X.i),drop=FALSE]
-        L_draw[mm,1:(mm-1)] <- A.draw.i[(ncol(X)+1):ncol(X.i)]
-      }
+    # Step 1: Sample coefficients - carrier/clark/marcellino 2019 JoE 
+    # for (mm in 1:M){
+    #   if (mm==1){
+    #     Y.i <- Y[,mm]*exp(-0.5*Sv_draw[,mm])
+    #     X.i <- X*exp(-0.5*Sv_draw[,mm])
+    #     
+    #     V_post <- try(chol2inv(chol(crossprod(X.i)+diag(1/A_prior[,mm]))),silent=TRUE)
+    #     if (is(V_post,"try-error")) V_post <- MASS::ginv(crossprod(X.i)+diag(1/A_prior[,mm]))
+    #     A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/A_prior[,mm])%*%a_prior[,mm])
+    #     
+    #     A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
+    #     if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
+    #     A_draw[,mm] <- A.draw.i
+    #     Em[,mm] <-  Em_str[,mm] <- Y[,mm]-X%*%A.draw.i
+    #   }else{
+    #     Y.i <- Y[,mm]*exp(-0.5*Sv_draw[,mm])
+    #     X.i <- cbind(X,Em[,1:(mm-1)])*exp(-0.5*Sv_draw[,mm])
+    #     
+    #     V_post <- try(chol2inv(chol((crossprod(X.i)+diag(1/c(A_prior[,mm],L_prior[mm,1:(mm-1)]))))),silent=TRUE)
+    #     if (is(V_post,"try-error")) V_post <- MASS::ginv((crossprod(X.i)+diag(1/c(A_prior[,mm],L_prior[mm,1:(mm-1)]))))
+    #     A_post <- V_post%*%(crossprod(X.i,Y.i)+diag(1/c(A_prior[,mm],L_prior[mm,1:(mm-1)]))%*%c(a_prior[,mm],l_prior[mm,1:(mm-1)]))
+    #     
+    #     A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X.i)),silent=TRUE)
+    #     if (is(A.draw.i,"try-error")) A.draw.i <- mvtnorm::mvrnorm(1,A_post,V_post)
+    #     
+    #     A_draw[,mm] <- A.draw.i[1:ncol(X)]
+    #     Em[,mm] <- Y[,mm]-X%*%A.draw.i[1:ncol(X)]
+    #     Em_str[,mm] <- Y[,mm]-X%*%A.draw.i[1:ncol(X)]-Em[,1:(mm-1),drop=FALSE]%*%A.draw.i[(ncol(X)+1):ncol(X.i),drop=FALSE]
+    #     L_draw[mm,1:(mm-1)] <- A.draw.i[(ncol(X)+1):ncol(X.i)]
+    #   }
+    # }
+    # rownames(A_draw) <- colnames(X)
+    #----------------------------------------------------------------------------
+    # Chan, Carriero, Clark and Marcellino 2021 Corrigendum to Carriero/Clark/Marcellino 2019 JoE
+    # Step 1a: Sample coefficients of A matrix
+    for(mm in 1:M){
+      A0_draw = A_draw
+      A0_draw[,mm] <- 0
+      
+      ztilde <- as.vector((Y - X%*%A0_draw)%*%t(L_drawinv[mm:M,,drop=FALSE])) * exp(-0.5*as.vector(Sv_draw[,mm:M,drop=FALSE]))
+      xtilde <- (L_drawinv[mm:M,mm,drop=FALSE] %x% X) * exp(-0.5*as.vector(Sv_draw[,mm:M,drop=FALSE]))
+      
+      V_post <- try(chol2inv(chol(crossprod(xtilde)+diag(1/A_prior[,mm]))),silent=TRUE)
+      if(is(V_post,"try-error")) V_post <- solve(crossprod(xtilde)+diag(1/A_prior[,mm]))
+      if(is(V_post,"try-error")) V_post <- ginv(crossprod(xtilde)+diag(1/A_prior[,mm]))
+      A_post <- V_post%*%(crossprod(xtilde,ztilde)+diag(1/A_prior[,mm])%*%a_prior[,mm])
+      
+      A.draw.i <- try(A_post+t(chol(V_post))%*%rnorm(ncol(X)),silent=TRUE)
+      if(is(A.draw.i,"try-error")) A.draw.i <- mvrnorm(1,A_post,V_post)
+      A_draw[,mm] <- A.draw.i
+      Em_draw[,mm] <- Y[,mm]-X%*%A.draw.i
     }
     rownames(A_draw) <- colnames(X)
+    # Step 1b: Sample coefficients in L matrix
+    if(M > 1){
+      for(mm in 2:M){
+        eps.m <- Em_draw[,mm]*exp(-0.5*Sv_draw[,mm,drop=TRUE])
+        eps.x <- Em_draw[,1:(mm-1),drop=FALSE]*exp(-0.5*Sv_draw[,mm,drop=TRUE])
+        
+        L_post <- try(chol2inv(chol(crossprod(eps.x)+diag(1/L_prior[mm,1:(mm-1)],mm-1,mm-1))),silent=TRUE)
+        if(is(L_post,"try-error")) L_post <- solve(crossprod(eps.x)+diag(1/L_prior[mm,1:(mm-1)],mm-1,mm-1))
+        if(is(L_post,"try-error")) L_post <- ginv(crossprod(eps.x)+diag(1/L_prior[mm,1:(mm-1)],mm-1,mm-1))
+        l_post <- L_post%*%(crossprod(eps.x,eps.m)+diag(1/L_prior[mm,1:(mm-1)],mm-1,mm-1)%*%l_prior[mm,1:(mm-1)])
+        
+        L.draw.i <- try(l_post+t(chol(L_post))%*%rnorm(length(1:(mm-1))),silent=TRUE)
+        if(is(L.draw.i,"try-error")) L.draw.i <- mvrnorm(1,l_post,L_post)
+        L_draw[mm,1:(mm-1)] <- L.draw.i
+      }
+    }
+    # Step 1c: Compute Em_str
+    L_drawinv <- solve(L_draw)
+    Em_str <- Y%*%t(L_drawinv) - X%*%A_draw%*%t(L_drawinv)
     #----------------------------------------------------------------------------------------
     # Step 2: Normal-Gamma prior 
     # Normal-Gamma for Covariances
@@ -684,9 +770,10 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
     #Step VI: Sample the prior scaling factors for covariances from GIG
     for(mm in 2:M){
       for(ii in 1:(mm-1)){
-        L_prior[mm,ii] <- do_rgig1(lambda = tau_draw["cov",1] - 0.5, 
-                                   chi = (L_draw[mm,ii] - l_prior[mm,ii])^2, 
-                                   psi = tau_draw["cov",1]*lambda2_draw["cov",1])
+        temp <- do_rgig1(lambda = tau_draw["cov",1] - 0.5, 
+                        chi = (L_draw[mm,ii] - l_prior[mm,ii])^2, 
+                        psi = tau_draw["cov",1]*lambda2_draw["cov",1])
+        L_prior[mm,ii] = ifelse(temp<1e-8,1e-8,ifelse(temp>1e+8,1e+8,temp))
       }
     }
     if(sample_tau){
@@ -726,7 +813,7 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
           temp <- do_rgig1(lambda = tau_draw[pp,1] - 0.5,
                            chi = (A.lag[jj,ii] - a.prior[jj,ii])^2,
                            psi = tau_draw[pp,1]*prod(lambda2_draw[1:pp,1]))
-          A.prior[jj,ii] <- ifelse(temp<1e-8,1e-8,temp)
+          A.prior[jj,ii] <- ifelse(temp<1e-8,1e-8,ifelse(temp>1e+8,1e+8,temp))
         }
       }
       A_prior[slct.i,] <- A.prior
@@ -753,7 +840,7 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
       for (mm in 1:M){
         para   <- as.list(pars_var[,mm])
         para$nu = Inf; para$rho=0; para$beta<-0
-        svdraw <- svsample_fast_cpp(y=Em_str[,mm], draws=1, burnin=0, designmatrix=matrix(NA_real_),
+        svdraw <- svsample_fast_cpp(y=Em_draw[,mm], draws=1, burnin=0, designmatrix=matrix(NA_real_),
                                     priorspec=Sv_priors, thinpara=1, thinlatent=1, keeptime="all",
                                     startpara=para, startlatent=Sv_draw[,mm],
                                     keeptau=FALSE, print_settings=list(quiet=TRUE, n_chains=1, chain=1),
@@ -771,7 +858,7 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
     }else{
       for (mm in 1:M){
         S_1 <- a_1+bigT/2
-        S_2 <- b_1+crossprod(Em_str[,mm])/2
+        S_2 <- b_1+crossprod(Em_draw[,mm])/2
         
         sig_eta <- 1/rgamma(1,S_1,S_2)
         Sv_draw[,mm] <- log(sig_eta)
@@ -783,7 +870,7 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
       count <- count+1
       A_store[count,,]       <- A_draw
       L_store[count,,]       <- L_draw
-      res_store[count,,]     <- Y-X%*%A_draw
+      res_store[count,,]     <- Em_draw
       # SV
       Sv_store[count,,]      <- Sv_draw
       pars_store[count,,]    <- pars_var
@@ -822,7 +909,7 @@ bvar <- function(Yraw, plag, nsave=5000, nburn=5000, thin=1, cons=FALSE, trend=F
   return(out)
 }
 
-#-----------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 getvarpost <- function(Y,X,Z,gamma,A,Sigma,Ncrit){
   bigT <- nrow(Y)
@@ -843,7 +930,7 @@ getvarpost <- function(Y,X,Z,gamma,A,Sigma,Ncrit){
   return(lik)
 }
 
-#--------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 crSmat <- function(S, H) {
   Smat <- matrix(0, nrow = length(S), ncol = H)
@@ -851,14 +938,14 @@ crSmat <- function(S, H) {
   return(Smat)
 }
 
-#--------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 getmode <- function(v) {
   uniqv <- unique(v)
   uniqv[which.max(tabulate(match(v, uniqv)))]
 }
 
-#--------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 gen_compMat <- function(A, M, p){
   Jm          <- matrix(0, M*p, M)
@@ -882,7 +969,7 @@ gen_compMat <- function(A, M, p){
               Jm=Jm))
 }
 
-#---------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 mlag <- function(X,lag){
   p <- lag
@@ -897,18 +984,18 @@ mlag <- function(X,lag){
   return(Xlag)  
 }
 
-#---------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 pct <- function(x,p,f) {log(x/dplyr::lag(x,n=p))*100*f}
 
-#------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 .atau_post <- function(atau,lambda2,thetas,k,rat=1){
   logpost <- sum(dgamma(thetas,atau,(atau*lambda2/2),log=TRUE))+dexp(atau,rate=rat,log=TRUE)
   return(logpost)
 }
 
-#-------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 .construct.arglist = function (funobj, envir = NULL){
   namedlist = formals(funobj)
@@ -934,7 +1021,7 @@ pct <- function(x,p,f) {log(x/dplyr::lag(x,n=p))*100*f}
   return(namedlist)
 }
 
-#-------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 
 transx <- function(x,tcode,lag){
   if(!is.matrix(x)) x<-as.matrix(x)

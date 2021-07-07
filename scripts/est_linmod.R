@@ -105,6 +105,8 @@ irfvar_chol <- apply(irfvar_chol_store[,,"BAAT10",], c(2,3), quantile, c(.05,.10
 irfvar_ext  <- apply(irfvar_extInstr_store[,,"BAAT10",], c(2,3), quantile, c(.05,.10,.16,.50,.84,.90,.95), na.rm = TRUE)
 irfvar_ext2 <- apply(irfvar_extInstr_store_old[,,"BAAT10",], c(2,3), quantile, c(.05,.10,.16,.50,.84,.90,.95), na.rm = TRUE)
 
+#------ Convergence Diagnostics
+
 rm(Yraw1, Qraw1, fit.res, ihor, impact, impresp1, impresp2, impresp3, irep, irfvar_chol_store, irfvar_extInstr_store, 
    irfvar_extInstr_store_old, Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
    Sig12, Sig21, Sig22, SIGMA, temp, ZZp)
