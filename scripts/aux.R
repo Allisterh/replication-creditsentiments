@@ -1072,3 +1072,18 @@ transx <- function(x,tcode,lag){
   return(y)
 }
 
+#-----------------------------------------------------------------------------------------------
+
+extract <- function(data,k){
+  t <- nrow(data);n <- ncol(data)
+  xx <- crossprod(data)
+  eigs <- eigen(xx)
+  evec <- eigs$vectors; eval <- eigs$values
+  
+  lam <- sqrt(n)*evec[,1:k]
+  fac <- data%*%lam/n
+  fac <- apply(fac, 2, scale)
+  
+  return(list(fac,lam,eval))
+}
+

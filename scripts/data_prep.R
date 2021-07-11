@@ -11,6 +11,7 @@ library(lubridate)
 
 # load data and build data set
 dataset_full <- read.csv("./data/mccracken-monthly.csv", stringsAsFactors = FALSE)
+dataset_tcode <- as.numeric(dataset_full[1,-1])
 dataset_full <- dataset_full[-1,]
 dataset_full <- dataset_full[-722,]
 dataset_full$sasdate <- as.Date(dataset_full$sasdate, format = "%m/%d/%Y")

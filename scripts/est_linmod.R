@@ -11,22 +11,12 @@ M     <- ncol(Yraw1)
 
 # transformations
 for(mm in 1:M){
-  Yraw1[,mm] <- transx(Yraw1[,mm], tcode=tcode[mm], lag=diff)
+  Yraw1[,mm] <- transx(Yraw1[,mm], tcode=tcode[mm], lag=diff)*tperc[mm]
 }
 Yraw1 <- Yraw1[-c(1:diff),]
 Qraw1 <- Qraw1[-c(1:diff),,drop=FALSE]
-Yraw1 <- apply(Yraw1, 2, scale)
+if(do_scale) Yraw1 <- apply(Yraw1, 2, scale)
 rownames(Yraw1)<-rownames(Qraw1)<-as.character(time_sample)
-
-# transformations
-#Yraw1[,"INDPRO"]   <- pct(Yraw1[,"INDPRO"],p=diff,f=12)
-#Yraw1[,"BUSLOANS"] <- pct(Yraw1[,"BUSLOANS"],p=diff,f=12)
-#Yraw1[,"CPIAUCSL"] <- pct(Yraw1[,"CPIAUCSL"],p=diff,f=12)
-# Yraw1[-c(1:diff),"FFRWXSR"]  <- diff(Yraw1[,"FFRWXSR"], lag=diff)
-
-# original estimation
-# load("../02 data/US/DiagnosticExpectationsBAAT10_forecast.rda")
-# Qraw1 <- as.matrix(dataset_est$BAAT10[-1] - DE[-c(565:576),"BAAT10.sv.m"])
 
 run_var <- bvar(Yraw = Yraw1, plag = plag, nsave = draws, nburn = burnin, thin = thin, 
                 cons = TRUE, trend = FALSE, sv = FALSE, eigen = TRUE)
@@ -107,7 +97,100 @@ irfvar_ext2 <- apply(irfvar_extInstr_store_old[,,"BAAT10",], c(2,3), quantile, c
 
 #------ Convergence Diagnostics
 
+A <- run_var$store$A_store
+D <- run_var$store$Sv_store[,1,] # no SV
+L <- run_var$store$L_store
+Aprior <- run_var$store$Aprior_store
+Lprior <- run_var$store$Lprior_store
+lambda2 <- run_var$store$lambda2_store
+tau <- run_var$store$tau_store
+
+Ineff_A <- array(NA_real_, c(M*plag+1, M))
+raftd_A <- array(NA_real_, c(M*plag+1, M))
+gewek_A <- array(NA_real_, c(M*plag+1, M))
+for(kk in 1:(M*plag+1)){
+  for(mm in 1:M){
+    temp <- as.mcmc(A[,kk,mm])
+    Ineff_A[kk,mm] <- thindraws/effectiveSize(temp)
+    raftd_A[kk,mm] <- raftery.diag(temp,r=0.015)$resmatrix[,"I"]
+    gewek_A[kk,mm] <- geweke.diag(temp, frac1=0.1, frac2=0.5)$z
+  }
+}
+
+Ineff_D <- array(NA_real_, c(M))
+raftd_D <- array(NA_real_, c(M))
+gewek_D <- array(NA_real_, c(M))
+for(mm in 1:M){
+  temp <- as.mcmc(D[,mm])
+  Ineff_D[mm] <- thindraws/effectiveSize(temp)
+  raftd_D[mm] <- raftery.diag(temp,r=0.015)$resmatrix[,"I"]
+  gewek_D[mm] <- geweke.diag(temp, frac1=0.1, frac2=0.5)$z
+}
+
+Ineff_L <- array(NA_real_, c(M, M))
+raftd_L <- array(NA_real_, c(M, M))
+gewek_L <- array(NA_real_, c(M, M))
+for(kk in 2:M){
+  for(ii in 1:(kk-1)){
+    temp <- as.mcmc(L[,kk,ii])
+    Ineff_L[kk,ii] <- thindraws/effectiveSize(temp)
+    raftd_L[kk,ii] <- raftery.diag(temp,r=0.015)$resmatrix[,"I"]
+    gewek_L[kk,ii] <- geweke.diag(temp, frac1=0.1, frac2=0.5)$z
+  }
+}
+
+Ineff_Aprior <- array(NA_real_, c(M*plag, M))
+raftd_Aprior <- array(NA_real_, c(M*plag, M))
+gewek_Aprior <- array(NA_real_, c(M*plag, M))
+for(kk in 1:(M*plag)){
+  for(mm in 1:M){
+    temp <- as.mcmc(Aprior[,kk,mm])
+    Ineff_Aprior[kk,mm] <- thindraws/effectiveSize(temp)
+    raftd_Aprior[kk,mm] <- raftery.diag(temp,r=0.015)$resmatrix[,"I"]
+    gewek_Aprior[kk,mm] <- geweke.diag(temp, frac1=0.1, frac2=0.5)$z
+  }
+}
+
+Ineff_Lprior <- array(NA_real_, c(M, M))
+raftd_Lprior <- array(NA_real_, c(M, M))
+gewek_Lprior <- array(NA_real_, c(M, M))
+for(kk in 2:M){
+  for(mm in 1:(kk-1)){
+    temp <- as.mcmc(Lprior[,kk,mm])
+    Ineff_Lprior[kk,mm] <- thindraws/effectiveSize(temp)
+    raftd_Lprior[kk,mm] <- raftery.diag(temp,r=0.015)$resmatrix[,"I"]
+    gewek_Lprior[kk,mm] <- geweke.diag(temp, frac1=0.1, frac2=0.5)$z
+  }
+}
+
+Ineff_lambda2 <- array(NA_real_, c(dim(lambda2)[2]))
+raftd_lambda2 <- array(NA_real_, c(dim(lambda2)[2]))
+gewek_lambda2 <- array(NA_real_, c(dim(lambda2)[2]))
+for(mm in 1:dim(lambda2)[2]){
+  temp <- as.mcmc(lambda2[,mm])
+  Ineff_lambda2[mm] <- thindraws/effectiveSize(temp)
+  raftd_lambda2[mm] <- raftery.diag(temp,r=0.015)$resmatrix[,"I"]
+  gewek_lambda2[mm] <- geweke.diag(temp, frac1=0.1, frac2=0.5)$z
+}
+
+Ineff_tau <- array(NA_real_, c(dim(tau)[2]))
+raftd_tau <- array(NA_real_, c(dim(tau)[2]))
+gewek_tau <- array(NA_real_, c(dim(tau)[2]))
+for(mm in 1:dim(tau)[2]){
+  temp <- as.mcmc(tau[,mm])
+  Ineff_tau[mm] <- thindraws/effectiveSize(temp)
+  raftd_tau[mm] <- raftery.diag(temp,r=0.015)$resmatrix[,"I"]
+  gewek_tau[mm] <- geweke.diag(temp, frac1=0.1, frac2=0.5)$z
+}
+
+var_conv = list(Ineff=mean(c(Ineff_A,Ineff_D,Ineff_L,Ineff_Aprior,Ineff_Lprior,Ineff_lambda2,Ineff_tau),na.rm=TRUE),
+                raftd=mean(c(raftd_A,raftd_D,raftd_L,raftd_Aprior,raftd_Lprior,raftd_lambda2,raftd_tau),na.rm=TRUE),
+                gewek=mean(c(abs(gewek_A)>1.96,abs(gewek_D)>1.96,abs(gewek_L)>1.96,abs(gewek_Aprior)>1.96,abs(gewek_Lprior)>1.96,abs(gewek_lambda2)>1.96,abs(gewek_tau)>1.96),na.rm=TRUE),
+                percd=thindraws/draws)
+
 rm(Yraw1, Qraw1, fit.res, ihor, impact, impresp1, impresp2, impresp3, irep, irfvar_chol_store, irfvar_extInstr_store, 
    irfvar_extInstr_store_old, Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
-   Sig12, Sig21, Sig22, SIGMA, temp, ZZp)
+   Sig12, Sig21, Sig22, SIGMA, temp, ZZp, Ineff_A, Ineff_D, Ineff_L, Ineff_Aprior, Ineff_Lprior, Ineff_lambda2, Ineff_tau,
+   raftd_A, raftd_D, raftd_L, raftd_Aprior, raftd_Lprior, raftd_lambda2, raftd_tau, gewek_A, gewek_L, gewek_D, gewek_Aprior,
+   gewek_Lprior, gewek_lambda2, gewek_tau)
 
