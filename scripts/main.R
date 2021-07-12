@@ -16,8 +16,8 @@ source("./scripts/aux.R")
 library(coda)
 
 # draws and burn-in's used for all involved samplers
-draws  = 2000 # full: 10.000
-burnin = 2000 # full: 15.000
+draws  = 10000 # full: 10.000
+burnin = 15000 # full: 15.000
 
 # define sample
 begin_sample <- as.Date("1968-01-01",format = "%Y-%m-%d")
@@ -36,14 +36,13 @@ M <- length(vars) # number of variables in the VAR
 r <- length(proxyrob)
 
 # parameters
-theta <- 0.91 # diagnosticity parameter
-diff  <- 12    # difference parameter: 1 = month-on-month growth rate, 12 = year-on-year growth rate
-plag  <- 13   # number of lags in the VAR
-thin  <- 1    # thinning factor
-nhor  <- 61   # impulse response horizon
-h     <- 2    # number of regimes
-q     <- 3    # number of factors
-K     <- length(vars)+q
+theta <- 0.91   # diagnosticity parameter
+diff  <- 12     # difference parameter: 1 = month-on-month growth rate, 12 = year-on-year growth rate
+plag  <- 13     # number of lags in the VAR
+thin  <- 1      # thinning factor
+nhor  <- 61     # impulse response horizon
+h     <- 2      # number of regimes
+q_est <- c(3,7) # number of factors
 order <- list(rob1=c(2,3,4,1,5),rob2=c(2,3,4,5,1))
 do_scale <- FALSE
 
@@ -69,7 +68,7 @@ if(file.exists(paste0("./saves/est_linmod_diff=",diff,"_plag=",plag,"_scale=",as
   load(paste0("./saves/est_linmod_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }else{
   source("./scripts/est_linmod.R")
-  save(run_var, irfvar_chol, irfvar_ext, irfvar_ext2, var_conv,
+  save(run_var, irfvar_chol, irfvar_ext, var_conv,
        file=paste0("./saves/est_linmod_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }
 
@@ -78,44 +77,46 @@ if(file.exists(paste0("./saves/est_thrshmod_diff=",diff,"_plag=",plag,"_scale=",
   load(paste0("./saves/est_thrshmod_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }else{
   source("./scripts/est_thrshmod.R")
-  save(run_tvar, irftvar_chol, irftvar_ext, irftvar_ext2, irftvar_robust, tvar_conv_reg1, tvar_conv_reg2,
+  save(run_tvar, irftvar_chol, irftvar_ext, irftvar_robust, tvar_conv_reg1, tvar_conv_reg2,
        file=paste0("./saves/est_thrshmod_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }
 
-# 5a) Extending the Information Set - Linear Model
-if(file.exists(paste0("./saves/est_linextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))){
-  load(paste0("./saves/est_linextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
-}else{
-  source("./scripts/est_linextinfo.R")
-  save(run_varext, irfvarext_chol, irfvarext_ext, varext_conv,
-       file=paste0("./saves/est_linextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
-}
-
-# 5b) Extending the Information Set - Threshold Model
-if(file.exists(paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))){
-  load(paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
-}else{
-  source("./scripts/est_thrshextinfo.R")
-  save(run_tvarext, irftvarext_chol, irftvarext_ext, tvarext_conv_reg1, tvarext_conv_reg2,
-       file=paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
+for(q in q_est){
+  # 5a) Extending the Information Set - Linear Model
+  if(file.exists(paste0("./saves/est_linextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))){
+    load(paste0("./saves/est_linextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
+  }else{
+    source("./scripts/est_linextinfo.R")
+    save(run_varext, irfvarext_chol, irfvarext_ext, varext_conv,
+         file=paste0("./saves/est_linextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
+  }
+  
+  # 5b) Extending the Information Set - Threshold Model
+  if(file.exists(paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))){
+    load(paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
+  }else{
+    source("./scripts/est_thrshextinfo.R")
+    save(run_tvarext, irftvarext_chol, irftvarext_ext, tvarext_conv_reg1, tvarext_conv_reg2,
+         file=paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
+  }
 }
 
 # 6a) Robustness - Linear Model
-if(file.exists(paste0("./saves/est_linorder_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))){
-  load(paste0("./saves/est_linorder_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
+if(file.exists(paste0("./saves/est_linrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))){
+  load(paste0("./saves/est_linrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }else{
-  source("./scripts/est_linorder.R")
-  save(irfvarorder_chol,
-       file=paste0("./saves/est_linorder_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
+  source("./scripts/est_linrob.R")
+  save(irfvarrob_chol,
+       file=paste0("./saves/est_linrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }
 
 # 6b) Robustness - Threshold Model
-if(file.exists(paste0("./saves/est_thrshorder_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))){
-  load(paste0("./saves/est_thrshorder_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
+if(file.exists(paste0("./saves/est_thrshrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))){
+  load(paste0("./saves/est_thrshrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }else{
-  source("./scripts/est_thrshorder.R")
-  save(irftvarext_chol,
-       file=paste0("./saves/est_thrshorder_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
+  source("./scripts/est_thrshrob.R")
+  save(irftvarrob_chol,
+       file=paste0("./saves/est_thrshrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }
 
 # 7) Robustness: Ordering in the VAR / TVAR
@@ -238,9 +239,6 @@ dev.off()
 ####################################
 ## Figure 4                       ##
 ####################################
-
-# irftvar_ext_korr <- irftvar_ext
-# irftvar_ext <- irftvar_ext_korr
 
 png("./figure4.png", type = "cairo", width = width, height = height, res = 300)
 par(mfrow=c(h,M), mar = c(2,2,2,1))
@@ -393,17 +391,17 @@ dev.off()
 png("./figuref1.png", type = "cairo", width = width, height = height/2, res = 300)
 par(mfrow=c(1,M), mar=c(2,2,2,1))
 for(mm in 1:M){
-  plot.ts(irfvarorder_chol[[1]][4,mm,], col = "black", ylim = range(irfvarorder_chol[[1]][,mm,]),
+  plot.ts(irfvarrob_chol[[1]][4,mm,], col = "black", ylim = range(irfvarrob_chol[[1]][,mm,]),
           xaxt="n", yaxt="n", xlab = "", ylab = "",
           main = varnames_plot[order[[1]][mm]],
           lty = 5, lwd = 3)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarorder_chol[[1]][1,mm,],rev(irfvarorder_chol[[1]][7,mm,])),
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[1]][1,mm,],rev(irfvarrob_chol[[1]][7,mm,])),
           col = "grey80", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarorder_chol[[1]][2,mm,],rev(irfvarorder_chol[[1]][6,mm,])),
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[1]][2,mm,],rev(irfvarrob_chol[[1]][6,mm,])),
           col = "grey60", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarorder_chol[[1]][3,mm,],rev(irfvarorder_chol[[1]][5,mm,])), 
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[1]][3,mm,],rev(irfvarrob_chol[[1]][5,mm,])), 
           col = "grey40", border=NA)
-  lines(irfvarorder_chol[[1]][4,mm,], col="black", lty=5, lwd=2.5)
+  lines(irfvarrob_chol[[1]][4,mm,], col="black", lty=5, lwd=2.5)
   axis(1, at = seq(1,nhor+1,by=12), labels = seq(0,nhor,by=12), lwd=2)
   axis(2, lwd=2)
   abline(h=0, col = "red", lty=2,lwd=1)
@@ -415,20 +413,51 @@ dev.off()
 ## Figure F2                      ##
 ####################################
 
-png("./figuref2.png", type = "cairo", width = width, height = height/2, res = 300)
+png("./figuref2.png", type = "cairo", width = width, height = height, res = 300)
+par(mfrow=c(h,M), mar = c(2,2,2,1))
+for(hh in 1:h){
+  for(mm in 1:M) {
+    if(mm==1) par(mar=c(2,4,2,1)) else par(mar=c(2,2,2,1))
+    ylim1 <- range(irftvarrob_chol[[1]][,mm,,])
+    plot.ts(irftvar_chol[[1]][4,mm,,hh], ylim = ylim1, xaxt="n", yaxt="n",
+            xlab = "", ylab = "", lty = 5, lwd=3, main=varnames_plot[order[[1]][mm]])
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[1]][1,mm,,hh],rev(irftvarrob_chol[[1]][7,mm,,hh])),
+            col = "grey80", border=NA)
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[1]][2,mm,,hh],rev(irftvarrob_chol[[1]][6,mm,,hh])),
+            col = "grey60", border=NA)
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[1]][3,mm,,hh],rev(irftvarrob_chol[[1]][5,mm,,hh])), 
+            col = "grey40", border=NA)
+    lines(irftvarrob_chol[[1]][4,mm,,hh], lty=5, lwd=2.5)
+    abline(h=0, col = "red", lty=2)
+    axis(1, at = seq(1,nhor,by=12), labels = seq(0,nhor,by=12), lwd=2)
+    axis(2, lwd=2)
+    if(mm==1){
+      if(hh==1)  {mtext("Optimistic Credit Regime", side=2, padj=-2.2)}
+      if(hh==2) {mtext("Pessimistic Credit Regime", side=2, padj=-2.2)}
+    }
+    box(lwd=2)
+  }
+}
+dev.off()
+
+####################################
+## Figure F3                      ##
+####################################
+
+png("./figuref3.png", type = "cairo", width = width, height = height/2, res = 300)
 par(mfrow=c(1,M), mar=c(2,2,2,1))
 for(mm in 1:M){
-  plot.ts(irfvarorder_chol[[2]][4,mm,], col = "black", ylim = range(irfvarorder_chol[[2]][,mm,]),
+  plot.ts(irfvarrob_chol[[2]][4,mm,], col = "black", ylim = range(irfvarrob_chol[[2]][,mm,]),
           xaxt="n", yaxt="n", xlab = "", ylab = "",
           main = varnames_plot[order[[2]][mm]],
           lty = 5, lwd = 3)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarorder_chol[[2]][1,mm,],rev(irfvarorder_chol[[2]][7,mm,])),
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][1,mm,],rev(irfvarrob_chol[[2]][7,mm,])),
           col = "grey80", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarorder_chol[[2]][2,mm,],rev(irfvarorder_chol[[2]][6,mm,])),
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][2,mm,],rev(irfvarrob_chol[[2]][6,mm,])),
           col = "grey60", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarorder_chol[[2]][3,mm,],rev(irfvarorder_chol[[2]][5,mm,])), 
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][3,mm,],rev(irfvarrob_chol[[2]][5,mm,])), 
           col = "grey40", border=NA)
-  lines(irfvarorder_chol[[2]][4,mm,], col="black", lty=5, lwd=2.5)
+  lines(irfvarrob_chol[[2]][4,mm,], col="black", lty=5, lwd=2.5)
   axis(1, at = seq(1,nhor+1,by=12), labels = seq(0,nhor,by=12), lwd=2)
   axis(2, lwd=2)
   abline(h=0, col = "red", lty=2,lwd=1)
@@ -443,3 +472,7 @@ dev.off()
 lapply(var_conv, function(l) round(l,3))
 lapply(tvar_conv_reg1, function(l) round(l,3))
 lapply(tvar_conv_reg2, function(l) round(l,3))
+lapply(varext_conv,function(l)round(l,3))
+lapply(tvarext_conv_reg1, function(l) round(l,3))
+lapply(tvarext_conv_reg2, function(l) round(l,3))
+

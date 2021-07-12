@@ -105,22 +105,11 @@ for(irep in 1:thindraws){
       compMati <- compMati %*% compMat
     }
     irftvar_ext_store[irep,,,,hh] <- impresp2
-    
-    # wrong!!!!!!
-    impresp3 <- array(NA_real_, c(M, M, nhor))
-    impresp3[,,1] <- shock
-    compMati <- compMat
-    for(ihor in 2:nhor){
-      impresp3[,,ihor] <- t(Jm)%*% compMati %*% Jm %*% impresp3[,, ihor-1]
-      compMati <- compMati %*% compMat
-    }
-    irftvar_ext_store_old[irep,,,,hh] <- impresp3
   }
 }
 
 irftvar_chol <- apply(irftvar_chol_store[,,"BAAT10",,], c(2,3,4), quantile, c(.05,.10,.16,.50,.84,.90,0.95), na.rm = TRUE)
 irftvar_ext  <- apply(irftvar_ext_store[,,"BAAT10",,], c(2,3,4), quantile, c(.05,.10,.16,.50,.84,.90,.95), na.rm = TRUE)
-irftvar_ext2 <- apply(irftvar_ext_store_old[,,"BAAT10",,], c(2,3,4), quantile, c(.05,.10,.16,.50,.84,.90,.95), na.rm = TRUE)
 
 #------ Robustness Identification
 
@@ -271,8 +260,8 @@ tvar_conv_reg2 = list(Ineff=mean(c(Ineff_A[,,2],Ineff_D[,2],Ineff_L[,,2],Ineff_A
                       gewek=mean(c(abs(gewek_A[,,2])>1.96,abs(gewek_D[,2])>1.96,abs(gewek_L[,,2])>1.96,abs(gewek_Aprior[,,2])>1.96,abs(gewek_Lprior[,,2])>1.96,abs(gewek_lambda2[,2])>1.96,abs(gewek_tau[,2])>1.96),na.rm=TRUE),
                       percd=thindraws/draws)
 
-rm(Yraw1, Qraw1, Qrawl, fit.res, ihor, impact, impresp1, impresp2, impresp3, irep, irftvar_chol_store, irftvar_ext_store, 
-   irftvar_ext_store_old, Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
+rm(Yraw1, Qraw1, Qrawl, fit.res, ihor, impact, impresp1, impresp2, irep, irftvar_chol_store, irftvar_ext_store, 
+   Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
    Sig12, Sig21, Sig22, SIGMA, temp, ZZp, rr, mm, hh, Ineff_A, Ineff_D, Ineff_L, Ineff_Aprior, Ineff_Lprior, Ineff_lambda2, 
    Ineff_tau, raftd_A, raftd_D, raftd_L, raftd_Aprior, raftd_Lprior, raftd_lambda2, raftd_tau, gewek_A, gewek_L, gewek_D, 
    gewek_Aprior,gewek_Lprior, gewek_lambda2, gewek_tau)

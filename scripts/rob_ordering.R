@@ -21,7 +21,7 @@ rownames(Yraw1)<-as.character(time_sample)
 # get all permutations
 orderings <- gtools::permutations(n = 5, r = M, v = 1:M)
 
-for(oo in 61:nrow(orderings)){
+for(oo in 1:nrow(orderings)){
 #for(oo in 1:60){
   if(file.exists(paste0("./saves/modorder=",oo,"_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
     cat(paste0("Round: ", oo,".\n"))

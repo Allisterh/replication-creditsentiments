@@ -29,8 +29,6 @@ irfvar_chol_store <- array(NA_real_, c(thindraws, M, M, nhor),
                            dimnames=list(NULL, colnames(Yraw1), colnames(Yraw1), seq(nhor)))
 irfvar_extInstr_store <- array(NA_real_, c(thindraws, M, M, nhor),
                                dimnames=list(NULL, colnames(Yraw1), colnames(Yraw1), seq(nhor)))
-irfvar_extInstr_store_old <- array(NA_real_, c(thindraws, M, M, nhor),
-                                   dimnames=list(NULL, colnames(Yraw1), colnames(Yraw1), seq(nhor)))
 for(irep in 1:thindraws){
   temp    <- gen_compMat(A=run_var$store$A_store[irep,,], M=M, p=plag)
   compMat <- temp$Cm
@@ -79,21 +77,10 @@ for(irep in 1:thindraws){
     compMati <- compMati %*% compMat
   }
   irfvar_extInstr_store[irep,,,] <- impresp2
-
-  # wrong!!!!!!
-  impresp3 <- array(NA_real_, c(M, M, nhor))
-  impresp3[,,1] <- shock
-  compMati <- compMat
-  for(ihor in 2:nhor){
-    impresp3[,,ihor] <- t(Jm)%*% compMati %*% Jm %*% impresp3[,, ihor-1]
-    compMati <- compMati %*% compMat
-  }
-  irfvar_extInstr_store_old[irep,,,] <- impresp3
 }
 
 irfvar_chol <- apply(irfvar_chol_store[,,"BAAT10",], c(2,3), quantile, c(.05,.10,.16,.50,.84,.90,0.95), na.rm = TRUE)
 irfvar_ext  <- apply(irfvar_extInstr_store[,,"BAAT10",], c(2,3), quantile, c(.05,.10,.16,.50,.84,.90,.95), na.rm = TRUE)
-irfvar_ext2 <- apply(irfvar_extInstr_store_old[,,"BAAT10",], c(2,3), quantile, c(.05,.10,.16,.50,.84,.90,.95), na.rm = TRUE)
 
 #------ Convergence Diagnostics
 
@@ -188,8 +175,8 @@ var_conv = list(Ineff=mean(c(Ineff_A,Ineff_D,Ineff_L,Ineff_Aprior,Ineff_Lprior,I
                 gewek=mean(c(abs(gewek_A)>1.96,abs(gewek_D)>1.96,abs(gewek_L)>1.96,abs(gewek_Aprior)>1.96,abs(gewek_Lprior)>1.96,abs(gewek_lambda2)>1.96,abs(gewek_tau)>1.96),na.rm=TRUE),
                 percd=thindraws/draws)
 
-rm(Yraw1, Qraw1, fit.res, ihor, impact, impresp1, impresp2, impresp3, irep, irfvar_chol_store, irfvar_extInstr_store, 
-   irfvar_extInstr_store_old, Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
+rm(Yraw1, Qraw1, fit.res, ihor, impact, impresp1, impresp2, irep, irfvar_chol_store, irfvar_extInstr_store, 
+   Q, thindraws, b11, b11b11p, b12b12p, b21ib11, compMat, compMati, Jm, reg0, res, shock, Sig11,
    Sig12, Sig21, Sig22, SIGMA, temp, ZZp, Ineff_A, Ineff_D, Ineff_L, Ineff_Aprior, Ineff_Lprior, Ineff_lambda2, Ineff_tau,
    raftd_A, raftd_D, raftd_L, raftd_Aprior, raftd_Lprior, raftd_lambda2, raftd_tau, gewek_A, gewek_L, gewek_D, gewek_Aprior,
    gewek_Lprior, gewek_lambda2, gewek_tau)
