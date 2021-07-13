@@ -90,6 +90,10 @@ for(q in q_est){
     save(run_varext, irfvarext_chol, irfvarext_ext, varext_conv,
          file=paste0("./saves/est_linextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
   }
+  assign(paste0("run_varext_",q), run_varext)
+  assign(paste0("irfvarext_chol_",q), irfvarext_chol)
+  assign(paste0("irfvarext_ext_",q), irfvarext_ext)
+  assign(paste0("varext_conv_",q), varext_conv)
   
   # 5b) Extending the Information Set - Threshold Model
   if(file.exists(paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))){
@@ -99,7 +103,13 @@ for(q in q_est){
     save(run_tvarext, irftvarext_chol, irftvarext_ext, tvarext_conv_reg1, tvarext_conv_reg2,
          file=paste0("./saves/est_thrshextinfo_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_q=",q,"_draws=",draws+burnin,".rda"))
   }
+  assign(paste0("run_tvarext_",q), run_tvarext)
+  assign(paste0("irftvarext_chol_",q), irftvarext_chol)
+  assign(paste0("irftvarext_ext_",q), irftvarext_ext)
+  assign(paste0("tvarext_conv_reg1_",q), tvarext_conv_reg1)
+  assign(paste0("tvarext_conv_reg2_",q), tvarext_conv_reg2)
 }
+rm(run_varext, irfvarext_chol, irfvarext_ext, varext_conv, run_tvarext, irftvarext_chol, irftvarext_ext, tvarext_conv_reg1, tvarext_conv_reg2)
 
 # 6a) Robustness - Linear Model
 if(file.exists(paste0("./saves/est_linrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))){
@@ -325,24 +335,24 @@ dev.off()
 
 # regime 2 - no differences as pointed out in the paper
 
-png("./figure6_regime2.png", type = "cairo", width = width, height = height_higher, res = 300)
-par(mfrow=c(r-1,M-1), mar=c(2,2,2,1))
-heur  <- c("RE","ADA", "WTR", "STR", "LAA")
-for(rr in 2:r){
-  for(mm in 2:M){
-    temp1 <- hist(irftvar_robust[,mm,2,rr], plot=FALSE, breaks=20)
-    temp2 <- hist(irftvar_robust[,mm,2,1], plot=FALSE, breaks=20)
-    if(mm==2) par(mar=c(2,4,2,1)) else par(mar=c(2,2,2,1))
-    hist(irftvar_robust[,mm,2,rr], xlab = "", ylab = "", main = "", freq=FALSE, breaks=20,
-         col=rgb(0.8,0.8,0.8,0.5), xlim=range(temp1$breaks,temp2$breaks), ylim=extendrange(c(temp1$density,temp2$density), f=c(.01,.05)))
-    if(rr==2) title(main = varnames_plot[mm-1])
-    hist(irftvar_robust[,mm,2,1], col=rgb(0.05,0.05,0.05,0.5), add=T, freq=FALSE, breaks=20)
-    abline(v=0, col="red", lty=2,lwd=2)
-    if(mm==2) mtext(heur[rr-1], side=2, padj=-2.2)
-    box(lwd=2)
-  }
-}
-dev.off()
+# png("./figure6_regime2.png", type = "cairo", width = width, height = height_higher, res = 300)
+# par(mfrow=c(r-1,M-1), mar=c(2,2,2,1))
+# heur  <- c("RE","ADA", "WTR", "STR", "LAA")
+# for(rr in 2:r){
+#   for(mm in 2:M){
+#     temp1 <- hist(irftvar_robust[,mm,2,rr], plot=FALSE, breaks=20)
+#     temp2 <- hist(irftvar_robust[,mm,2,1], plot=FALSE, breaks=20)
+#     if(mm==2) par(mar=c(2,4,2,1)) else par(mar=c(2,2,2,1))
+#     hist(irftvar_robust[,mm,2,rr], xlab = "", ylab = "", main = "", freq=FALSE, breaks=20,
+#          col=rgb(0.8,0.8,0.8,0.5), xlim=range(temp1$breaks,temp2$breaks), ylim=extendrange(c(temp1$density,temp2$density), f=c(.01,.05)))
+#     if(rr==2) title(main = varnames_plot[mm-1])
+#     hist(irftvar_robust[,mm,2,1], col=rgb(0.05,0.05,0.05,0.5), add=T, freq=FALSE, breaks=20)
+#     abline(v=0, col="red", lty=2,lwd=2)
+#     if(mm==2) mtext(heur[rr-1], side=2, padj=-2.2)
+#     box(lwd=2)
+#   }
+# }
+# dev.off()
 
 ####################################
 ## Figure 7                       ##
@@ -353,16 +363,16 @@ par(mfrow=c(h,M), mar = c(2,2,2,1))
 for(hh in 1:h){
   for(mm in 1:M) {
     if(mm==1) par(mar=c(2,4,2,1)) else par(mar=c(2,2,2,1))
-    ylim1 <- range(irftvarext_ext[,mm,,],irftvar_ext[,mm,,])
-    plot.ts(irftvarext_ext[4,mm,,hh], ylim = ylim1, xaxt="n", yaxt="n",
+    ylim1 <- range(irftvarext_ext_3[,mm,,],irftvar_ext[,mm,,])
+    plot.ts(irftvarext_ext_3[4,mm,,hh], ylim = ylim1, xaxt="n", yaxt="n",
             xlab = "", ylab = "", lty = 5, lwd=3, main=varnames_plot[mm])
-    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext[1,mm,,hh], rev(irftvarext_ext[7,mm,,hh])),
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext_3[1,mm,,hh], rev(irftvarext_ext_3[7,mm,,hh])),
             col = "grey80", border=NA)
-    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext[2,mm,,hh], rev(irftvarext_ext[6,mm,,hh])),
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext_3[2,mm,,hh], rev(irftvarext_ext_3[6,mm,,hh])),
             col = "grey60", border=NA)
-    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext[3,mm,,hh], rev(irftvarext_ext[5,mm,,hh])), 
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext_3[3,mm,,hh], rev(irftvarext_ext_3[5,mm,,hh])), 
             col = "grey40", border=NA)
-    lines(irftvarext_ext[4,mm,,hh], lty=5, lwd=2.5)
+    lines(irftvarext_ext_3[4,mm,,hh], lty=5, lwd=2.5)
     abline(h=0, col = "red", lty=2)
     axis(1, at = seq(1,nhor,by=12), labels = seq(0,nhor,by=12), lwd=2)
     axis(2, lwd=2)
@@ -391,17 +401,17 @@ dev.off()
 png("./figuref1.png", type = "cairo", width = width, height = height/2, res = 300)
 par(mfrow=c(1,M), mar=c(2,2,2,1))
 for(mm in 1:M){
-  plot.ts(irfvarrob_chol[[1]][4,mm,], col = "black", ylim = range(irfvarrob_chol[[1]][,mm,]),
+  plot.ts(irfvarrob_chol[[2]][4,mm,], col = "black", ylim = range(irfvarrob_chol[[2]][,mm,]),
           xaxt="n", yaxt="n", xlab = "", ylab = "",
-          main = varnames_plot[order[[1]][mm]],
+          main = varnames_plot[order[[2]][mm]],
           lty = 5, lwd = 3)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[1]][1,mm,],rev(irfvarrob_chol[[1]][7,mm,])),
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][1,mm,],rev(irfvarrob_chol[[2]][7,mm,])),
           col = "grey80", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[1]][2,mm,],rev(irfvarrob_chol[[1]][6,mm,])),
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][2,mm,],rev(irfvarrob_chol[[2]][6,mm,])),
           col = "grey60", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[1]][3,mm,],rev(irfvarrob_chol[[1]][5,mm,])), 
+  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][3,mm,],rev(irfvarrob_chol[[2]][5,mm,])), 
           col = "grey40", border=NA)
-  lines(irfvarrob_chol[[1]][4,mm,], col="black", lty=5, lwd=2.5)
+  lines(irfvarrob_chol[[2]][4,mm,], col="black", lty=5, lwd=2.5)
   axis(1, at = seq(1,nhor+1,by=12), labels = seq(0,nhor,by=12), lwd=2)
   axis(2, lwd=2)
   abline(h=0, col = "red", lty=2,lwd=1)
@@ -418,16 +428,16 @@ par(mfrow=c(h,M), mar = c(2,2,2,1))
 for(hh in 1:h){
   for(mm in 1:M) {
     if(mm==1) par(mar=c(2,4,2,1)) else par(mar=c(2,2,2,1))
-    ylim1 <- range(irftvarrob_chol[[1]][,mm,,])
-    plot.ts(irftvar_chol[[1]][4,mm,,hh], ylim = ylim1, xaxt="n", yaxt="n",
-            xlab = "", ylab = "", lty = 5, lwd=3, main=varnames_plot[order[[1]][mm]])
-    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[1]][1,mm,,hh],rev(irftvarrob_chol[[1]][7,mm,,hh])),
+    ylim1 <- range(irftvarrob_chol[[2]][,mm,,])
+    plot.ts(irftvarrob_chol[[2]][4,mm,,hh], ylim = ylim1, xaxt="n", yaxt="n",
+            xlab = "", ylab = "", lty = 5, lwd=3, main=varnames_plot[order[[2]][mm]])
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[2]][1,mm,,hh],rev(irftvarrob_chol[[2]][7,mm,,hh])),
             col = "grey80", border=NA)
-    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[1]][2,mm,,hh],rev(irftvarrob_chol[[1]][6,mm,,hh])),
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[2]][2,mm,,hh],rev(irftvarrob_chol[[2]][6,mm,,hh])),
             col = "grey60", border=NA)
-    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[1]][3,mm,,hh],rev(irftvarrob_chol[[1]][5,mm,,hh])), 
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarrob_chol[[2]][3,mm,,hh],rev(irftvarrob_chol[[2]][5,mm,,hh])), 
             col = "grey40", border=NA)
-    lines(irftvarrob_chol[[1]][4,mm,,hh], lty=5, lwd=2.5)
+    lines(irftvarrob_chol[[2]][4,mm,,hh], lty=5, lwd=2.5)
     abline(h=0, col = "red", lty=2)
     axis(1, at = seq(1,nhor,by=12), labels = seq(0,nhor,by=12), lwd=2)
     axis(2, lwd=2)
@@ -444,24 +454,39 @@ dev.off()
 ## Figure F3                      ##
 ####################################
 
-png("./figuref3.png", type = "cairo", width = width, height = height/2, res = 300)
-par(mfrow=c(1,M), mar=c(2,2,2,1))
-for(mm in 1:M){
-  plot.ts(irfvarrob_chol[[2]][4,mm,], col = "black", ylim = range(irfvarrob_chol[[2]][,mm,]),
-          xaxt="n", yaxt="n", xlab = "", ylab = "",
-          main = varnames_plot[order[[2]][mm]],
-          lty = 5, lwd = 3)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][1,mm,],rev(irfvarrob_chol[[2]][7,mm,])),
-          col = "grey80", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][2,mm,],rev(irfvarrob_chol[[2]][6,mm,])),
-          col = "grey60", border=NA)
-  polygon(c(1:nhor,rev(1:nhor)), c(irfvarrob_chol[[2]][3,mm,],rev(irfvarrob_chol[[2]][5,mm,])), 
-          col = "grey40", border=NA)
-  lines(irfvarrob_chol[[2]][4,mm,], col="black", lty=5, lwd=2.5)
-  axis(1, at = seq(1,nhor+1,by=12), labels = seq(0,nhor,by=12), lwd=2)
-  axis(2, lwd=2)
-  abline(h=0, col = "red", lty=2,lwd=1)
-  box(lwd=2)
+png("./figuref3.png", type = "cairo", width = width, height = height, res = 300)
+par(mfrow=c(h,M), mar = c(2,2,2,1))
+for(hh in 1:h){
+  for(mm in 1:M) {
+    if(mm==1) par(mar=c(2,4,2,1)) else par(mar=c(2,2,2,1))
+    ylim1 <- range(irftvarext_ext_7[,mm,,],irftvar_ext[,mm,,])
+    plot.ts(irftvarext_ext_7[4,mm,,hh], ylim = ylim1, xaxt="n", yaxt="n",
+            xlab = "", ylab = "", lty = 5, lwd=3, main=varnames_plot[mm])
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext_7[1,mm,,hh], rev(irftvarext_ext_7[7,mm,,hh])),
+            col = "grey80", border=NA)
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext_7[2,mm,,hh], rev(irftvarext_ext_7[6,mm,,hh])),
+            col = "grey60", border=NA)
+    polygon(c(1:nhor,rev(1:nhor)), c(irftvarext_ext_7[3,mm,,hh], rev(irftvarext_ext_7[5,mm,,hh])), 
+            col = "grey40", border=NA)
+    lines(irftvarext_ext_7[4,mm,,hh], lty=5, lwd=2.5)
+    abline(h=0, col = "red", lty=2)
+    axis(1, at = seq(1,nhor,by=12), labels = seq(0,nhor,by=12), lwd=2)
+    axis(2, lwd=2)
+    if(mm==1){
+      if(hh==1)  {mtext("Optimistic Credit Regime", side=2, padj=-2.2)}
+      if(hh==2) {mtext("Pessimistic Credit Regime", side=2, padj=-2.2)}
+    }
+    box(lwd=2)
+    # add baseline model
+    lines(irftvar_ext[4,mm,,hh], col="#CD661D", lwd=2)
+    lines(irftvar_ext[7,mm,,hh], col="#EE7621", lwd=2, lty=2)
+    lines(irftvar_ext[1,mm,,hh], col="#EE7621", lwd=2, lty=2)
+    lines(irftvar_ext[6,mm,,hh], col="#EE7621", lwd=2, lty=3)
+    lines(irftvar_ext[2,mm,,hh], col="#EE7621", lwd=2, lty=3)
+    lines(irftvar_ext[3,mm,,hh], col="#EE7621", lwd=2, lty=4)
+    lines(irftvar_ext[5,mm,,hh], col="#EE7621", lwd=2, lty=4)
+    if(mm == 5 && hh==2) legend("bottomright", c("Extended Model", "Baseline Model"), col=c("black", "#CD661D"), lwd=c(2,2))
+  }
 }
 dev.off()
 
