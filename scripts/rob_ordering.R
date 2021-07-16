@@ -21,8 +21,8 @@ rownames(Yraw1)<-as.character(time_sample)
 # get all permutations
 orderings <- gtools::permutations(n = 5, r = M, v = 1:M)
 
-for(oo in 1:nrow(orderings)){
-#for(oo in 1:60){
+#for(oo in 1:nrow(orderings)){
+for(oo in 95){
   if(file.exists(paste0("./saves/modorder=",oo,"_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
     cat(paste0("Round: ", oo,".\n"))
     next
@@ -42,44 +42,41 @@ for(oo in 1:nrow(orderings)){
   cat(paste0("Round: ", oo,".\n"))
 }
 
+# compute correlations
+corr_A <- numeric(length=nrow(orderings))
 
-corr_A <- matrix(NA_real_,nrow(orderings),nrow(orderings),
-                 dimnames=list(paste0("ordering ",seq(1,nrow(orderings))),paste0("ordering ",seq(1,nrow(orderings)))))
+load(paste0("./saves/modorder=",oo,"_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
+temp1_var<-temp_var
+temp1_tvar<-temp_tvar
 
-for(oo in 1:nrow(orderings)){
-  load(paste0("./saves/modorder=",oo,"_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
-  temp1_var<-temp_var
-  temp1_tvar<-temp_tvar
+rowvec1 <- NULL
+for(pp in 1:plag) rowvec1 <- c(rowvec1,orderings[oo,]+(pp-1)*M)
+rowvec1 <- c(rowvec1,66)
+colvec1 <- orderings[1,]
+
+for(rr in 1:nrow(orderings)){
+  filepath <- paste0("./saves/modorder=",rr,"_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda")
+  if(file.exists(filepath))
+    load(filepath) else next
   
-  rowvec1 <- NULL
-  for(pp in 1:plag) rowvec1 <- c(rowvec1,orderings[oo,]+(pp-1)*M)
-  rowvec1 <- c(rowvec1,66)
-  colvec1 <- orderings[oo,]
+  temp2_var<-temp_var
+  temp2_tvar<-temp_tvar
   
-  for(rr in 1:nrow(orderings)){
-    filepath <- paste0("./saves/modorder=",rr,"_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda")
-    if(file.exists(filepath))
-      load(filepath) else next
-    
-    temp2_var<-temp_var
-    temp2_tvar<-temp_tvar
-    
-    rowvec2 <- NULL
-    for(pp in 1:plag) rowvec2 <- c(rowvec2,orderings[rr,]+(pp-1)*M)
-    rowvec2 <- c(rowvec2,66)
-    colvec2 <- orderings[rr,]
-    
-    post1 <- try(apply(temp1_var$store$A_store,c(2,3),median), silent=TRUE)
-    post2 <- try(apply(temp2_var$store$A_store,c(2,3),median), silent=TRUE)
-    
-    if(is(post1,"try-error") | is(post2,"try-error")) next
-    
-    corr_A[rr, oo] <- cor(as.vector(post1[rowvec1,colvec1]), as.vector(post2[rowvec2,colvec2]))
-  }
+  rowvec2 <- NULL
+  for(pp in 1:plag) rowvec2 <- c(rowvec2,orderings[rr,]+(pp-1)*M)
+  rowvec2 <- c(rowvec2,66)
+  colvec2 <- orderings[rr,]
   
-  print(paste0("Round: ", oo))
+  post1 <- try(apply(temp1_var$store$A_store,c(2,3),median), silent=TRUE)
+  post2 <- try(apply(temp2_var$store$A_store,c(2,3),median), silent=TRUE)
+  
+  if(is(post1,"try-error") | is(post2,"try-error")) next
+  
+  corr_A[rr] <- cor(as.vector(post1[rowvec1,colvec1]), as.vector(post2[rowvec2,colvec2]))
+  
+  print(paste0("Round: ", rr))
 }
 
-boxplot(corr_A[,1])
+boxplot(corr_A)
 
 

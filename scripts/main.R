@@ -16,8 +16,8 @@ source("./scripts/aux.R")
 library(coda)
 
 # draws and burn-in's used for all involved samplers
-draws  = 10000 # full: 10.000
-burnin = 15000 # full: 15.000
+draws  = 5000 # full: 10.000
+burnin = 5000 # full: 15.000
 
 # define sample
 begin_sample <- as.Date("1968-01-01",format = "%Y-%m-%d")
@@ -129,7 +129,10 @@ if(file.exists(paste0("./saves/est_thrshrob_diff=",diff,"_plag=",plag,"_scale=",
        file=paste0("./saves/est_thrshrob_diff=",diff,"_plag=",plag,"_scale=",as.numeric(do_scale),"_draws=",draws+burnin,".rda"))
 }
 
-# 7) Robustness: Ordering in the VAR / TVAR
+####### ONLY ADDITIONAL NOT IN THE PAPER
+####### ATTENTION: VERY TIME-CONSUMING
+
+# Robustness -  Ordering in the VAR / TVAR
 # if(file.exists(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))){
 #   load(paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 # }else{
@@ -138,7 +141,7 @@ if(file.exists(paste0("./saves/est_thrshrob_diff=",diff,"_plag=",plag,"_scale=",
 #        file=paste0("./saves/rob_ordering_diff=",diff,"_plag=",plag,"_draws=",draws+burnin,".rda"))
 # }
 
-# 8) Figures
+# 7) Figures
 
 ####################################
 ## Figure 1                       ##
@@ -490,6 +493,8 @@ for(hh in 1:h){
 }
 dev.off()
 
+# 8) Tables
+
 ####################################
 ## Table E1                       ##
 ####################################
@@ -500,4 +505,8 @@ lapply(tvar_conv_reg2, function(l) round(l,3))
 lapply(varext_conv,function(l)round(l,3))
 lapply(tvarext_conv_reg1, function(l) round(l,3))
 lapply(tvarext_conv_reg2, function(l) round(l,3))
+
+# 9) Figure(s) not in the paper
+
+
 
